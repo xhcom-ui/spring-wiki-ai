@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 200px;
+            background-color: #333;
+            color: white;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-top: 0;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin-bottom: 10px;
+        }
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .sidebar ul li a:hover {
+            background-color: #555;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .header a {
+            color: #333;
+            text-decoration: none;
+            padding: 8px 16px;
+            background-color: #ddd;
+            border-radius: 4px;
+        }
+        .header a:hover {
+            background-color: #ccc;
+        }
+        .welcome {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>菜单</h2>
+        <ul id="menu-list">
+            <!-- 动态生成的菜单将在这里显示 -->
+        </ul>
+    </div>
+    <div class="content">
+        <div class="header">
+            <h1>欢迎来到系统</h1>
+            <a href="/logout">退出登录</a>
+        </div>
+        <div class="welcome">
+            <h2>欢迎页面</h2>
+            <p>这是系统的主页，根据您的权限，您可以访问不同的功能。</p>
+        </div>
+    </div>
+    <script>
+        // 加载菜单
+        fetch('/api/menus')
+            .then(response => response.json())
+            .then(data => {
+                const menuList = document.getElementById('menu-list');
+                menuList.innerHTML = '';
+                
+                data.forEach(menu => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = menu.path;
+                    a.textContent = menu.name;
+                    li.appendChild(a);
+                    menuList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('加载菜单失败:', error);
+            });
+    </script>
+</body>
+</html>

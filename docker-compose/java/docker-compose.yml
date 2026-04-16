@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  syn-data-backend:
+    image: openjdk:17-jdk-alpine
+    container_name: syn-data-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./jar:/app
+      - ./logs:/app/logs
+    command: java -jar /app/syn-data-backend-1.0.0.jar
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=syn_data
+      - MYSQL_USERNAME=syn_user
+      - MYSQL_PASSWORD=syn_pass
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - XXL_JOB_ADMIN=http://xxl-job-admin:8080/xxl-job-admin
+    depends_on:
+      - mysql
+      - elasticsearch
+      - redis
+    networks:
+      - java-network
+
+networks:
+  java-network:
+    driver: bridge

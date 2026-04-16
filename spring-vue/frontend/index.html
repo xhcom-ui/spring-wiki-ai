@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPPAMS - 知识库管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <div class="app-container">
+            <!-- 左侧导航栏 -->
+            <aside class="sidebar">
+                <div class="logo">
+                    <img src="https://vuejs.org/images/logo.png" alt="Vue Logo" class="logo-img">
+                    <span class="logo-text">SPPAMS</span>
+                </div>
+                <div class="menu-title">功能菜单</div>
+                <nav class="menu">
+                    <div 
+                        v-for="item in menuItems" 
+                        :key="item.id"
+                        :class="['menu-item', { active: currentMenu === item.id }]"
+                        @click="currentMenu = item.id"
+                    >
+                        <span class="menu-icon">{{ item.icon }}</span>
+                        <span class="menu-text">{{ item.name }}</span>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- 主内容区 -->
+            <main class="main-content">
+                <!-- 首页 -->
+                <div v-if="currentMenu === 'home'" class="page">
+                    <h1>欢迎使用 SPPAMS</h1>
+                    <p class="description">智能知识库管理系统</p>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ stats.totalFiles }}</div>
+                            <div class="stat-label">知识库文件</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ stats.totalSize }}</div>
+                            <div class="stat-label">总大小 (MB)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 日志分析 -->
+                <div v-if="currentMenu === 'log'" class="page">
+                    <h1>日志分析</h1>
+                    <div class="coming-soon">
+                        <p>日志分析功能开发中...</p>
+                    </div>
+                </div>
+
+                <!-- 知识库 -->
+                <div v-if="currentMenu === 'knowledge'" class="page">
+                    <div class="knowledge-header">
+                        <h1>知识库</h1>
+                        <p class="support-formats">
+                            支持：txt / md / log / json / pdf / doc / docx / ppt / pptx / html / htm
+                        </p>
+                    </div>
+
+                    <div class="upload-section">
+                        <div class="form-group">
+                            <label>服务地址</label>
+                            <input 
+                                type="text" 
+                                v-model="serviceUrl" 
+                                placeholder="http://localhost:9090"
+                                class="service-input"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>选择文件</label>
+                            <div class="file-upload">
+                                <input 
+                                    type="file" 
+                                    ref="fileInput"
+                                    @change="handleFileChange"
+                                    accept=".txt,.md,.log,.json,.pdf,.doc,.docx,.ppt,.pptx,.html,.htm"
+                                    style="display: none;"
+                                >
+                                <button @click="$refs.fileInput.click()" class="btn-select">
+                                    选择文件
+                                </button>
+                                <span class="file-name">{{ selectedFileName || '未选择任何文件' }}</span>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button 
+                                @click="uploadFile" 
+                                :disabled="!selectedFile || uploading"
+                                class="btn-primary"
+                            >
+                                {{ uploading ? '上传中...' : '开始上传' }}
+                            </button>
+                            <button @click="clearForm" class="btn-secondary">
+                                清空
+                            </button>
+                        </div>
+
+                        <div v-if="uploadMessage" :class="['message', uploadMessage.type]">
+                            {{ uploadMessage.text }}
+                        </div>
+                    </div>
+
+                    <!-- 知识库列表 -->
+                    <div class="knowledge-list">
+                        <h2>已上传文件</h2>
+                        <div v-if="knowledgeBases.length === 0" class="empty-state">
+                            暂无上传的文件
+                        </div>
+                        <div v-else class="file-list">
+                            <div v-for="item in knowledgeBases" :key="item.id" class="file-item">
+                                <div class="file-info">
+                                    <span class="file-name">{{ item.fileName }}</span>
+                                    <span class="file-type">{{ item.fileType }}</span>
+                                    <span class="file-size">{{ formatFileSize(item.fileSize) }}</span>
+                                    <span class="file-status">{{ item.status }}</span>
+                                </div>
+                                <div class="file-actions">
+                                    <button @click="viewContent(item)" class="btn-view">查看</button>
+                                    <button @click="deleteFile(item.id)" class="btn-delete">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 内容查看弹窗 -->
+                    <div v-if="showContentModal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>{{ currentFile?.fileName }}</h3>
+                                <button @click="showContentModal = false" class="btn-close">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <pre class="content-text">{{ currentFile?.content }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

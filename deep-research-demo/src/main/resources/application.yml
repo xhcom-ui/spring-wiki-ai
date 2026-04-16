@@ -1,0 +1,34 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: deep-research-demo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/deep_research_db
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+# Hugging Face 配置
+huggingface:
+  api-key: your_huggingface_api_key
+  embedding-model: sentence-transformers/all-MiniLM-L6-v2
+
+# OpenAI 配置
+openai:
+  api-key: your_openai_api_key
+  model: gpt-4
+
+# 深度研究配置
+deep-research:
+  max-iterations: 5
+  max-sources: 10
+  chunk-size: 1000
+  chunk-overlap: 200

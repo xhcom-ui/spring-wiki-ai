@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: rag-springboot
+
+  # OpenAI 配置（国内可替换为通义千问/文心一言）
+  ai:
+    openai:
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxx  # 你的API Key
+      base-url: https://api.openai.com  # 国内可填代理地址
+      chat:
+        options:
+          model: gpt-3.5-turbo
+          temperature: 0.7
+
+    # Chroma 向量数据库
+    chroma:
+      client:
+        host: localhost
+        port: 8000
+      vector-store:
+        collection-name: rag-collection

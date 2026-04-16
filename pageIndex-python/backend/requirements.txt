@@ -1,0 +1,11 @@
+# PageIndex依赖
+pageindex
+
+# FastAPI依赖
+fastapi
+uvicorn
+python-multipart
+
+# 其他依赖
+python-dotenv
+requests

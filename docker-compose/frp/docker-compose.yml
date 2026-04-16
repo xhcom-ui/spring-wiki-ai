@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  frps:
+    image: snowdreamtech/frps:latest
+    container_name: frps
+    restart: always
+    ports:
+      - "7000:7000"
+      - "8080:8080"
+    volumes:
+      - ./frps.ini:/etc/frp/frps.ini
+    networks:
+      - frp-network
+
+  frpc:
+    image: snowdreamtech/frpc:latest
+    container_name: frpc
+    restart: always
+    volumes:
+      - ./frpc.ini:/etc/frp/frpc.ini
+    networks:
+      - frp-network
+
+networks:
+  frp-network:
+    driver: bridge

@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - seata-network
+
+  nacos:
+    image: nacos/nacos-server:latest
+    container_name: nacos
+    restart: always
+    ports:
+      - "8848:8848"
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=root123
+    depends_on:
+      - mysql
+    networks:
+      - seata-network
+
+  seata-server:
+    image: seataio/seata-server:1.5.2
+    container_name: seata-server
+    restart: always
+    ports:
+      - "8091:8091"
+    environment:
+      - SEATA_IP=seata-server
+      - SEATA_PORT=8091
+      - STORE_MODE=db
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root123
+      - DB_NAME=seata_server
+    depends_on:
+      - mysql
+      - nacos
+    networks:
+      - seata-network
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    restart: always
+    ports:
+      - "9411:9411"
+    networks:
+      - seata-network
+
+networks:
+  seata-network:
+    driver: bridge

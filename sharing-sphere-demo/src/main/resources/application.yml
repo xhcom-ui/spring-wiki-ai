@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: sharing-sphere-demo
+  shardingsphere:
+    datasource:
+      names: master,slave
+      master:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://localhost:3306/db_master?useUnicode=true&characterEncoding=utf-8&useSSL=false
+        username: root
+        password: root123
+      slave:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://localhost:3307/db_slave?useUnicode=true&characterEncoding=utf-8&useSSL=false
+        username: root
+        password: root123
+    rules:
+      sharding:
+        tables:
+          t_user:
+            actual-data-nodes: master.t_user_${0..1}
+            table-strategy:
+              standard:
+                sharding-column: id
+                sharding-algorithm-name: t_user_table
+            key-generate-strategy:
+              column: id
+              key-generator-name: snowflake
+        sharding-algorithms:
+          t_user_table:
+            type: INLINE
+            props:
+              algorithm-expression: t_user_${id % 2}
+        key-generators:
+          snowflake:
+            type: SNOWFLAKE
+            props:
+              worker-id: 123
+      readwrite-splitting:
+        data-sources:
+          prd_ds:
+            type: Static
+            props:
+              write-data-source-name: master
+              read-data-source-names: slave
+        rules:
+          - name: prd_ds
+            data-source-name: prd_ds
+    props:
+      sql-show: true

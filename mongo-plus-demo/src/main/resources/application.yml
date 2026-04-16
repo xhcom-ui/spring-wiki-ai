@@ -1,0 +1,11 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/mongo_plus_demo
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.mongo.plus: info

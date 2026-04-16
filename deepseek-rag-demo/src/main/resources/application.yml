@@ -1,0 +1,32 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: deepseek-rag-demo
+  ai:
+    openai:
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxx  # DeepSeek API Key
+      base-url: https://api.deepseek.com    # DeepSeek API 地址（兼容 OpenAI 接口）
+      chat:
+        options:
+          model: deepseek-chat              # 模型名称：deepseek-chat / deepseek-reasoner
+          temperature: 0.7
+          max-tokens: 4096
+
+# RAG 自有配置
+rag:
+  vector-store:
+    type: simple                            # 向量存储类型：simple（内存持久化）/ chroma / milvus
+    persist-dir: ./vector-store              # 向量库持久化目录
+  search:
+    top-k: 5                                # 向量检索返回的文档数
+    similarity-threshold: 0.5               # 相似度阈值
+  chunk:
+    default-chunk-size: 800                 # 默认切分大小
+    default-chunk-overlap: 200              # 默认重叠大小
+  upload-dir: ./uploads                     # 上传文件保存目录
+
+logging:
+  level:
+    org.wiki: DEBUG

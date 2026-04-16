@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: springboot-redis-mysql-demo
+  datasource:
+    url: jdbc:mysql://localhost:3306/test_db?useSSL=false&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    database: 0
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10分钟
+
+# 延迟双删配置
+cache:
+  delay:
+    time: 500  # 延迟时间，单位毫秒

@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: syn_data
+      MYSQL_USER: syn_user
+      MYSQL_PASSWORD: syn_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql/conf/my.cnf:/etc/mysql/my.cnf
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7.0
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/data:/data
+      - ./redis/conf/redis.conf:/etc/redis/redis.conf
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      - app-network
+
+  syn-data-backend:
+    image: openjdk:17-jdk-alpine
+    container_name: syn-data-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./java/jar:/app
+      - ./java/logs:/app/logs
+    command: java -jar /app/syn-data-backend-1.0.0.jar
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=syn_data
+      - MYSQL_USERNAME=syn_user
+      - MYSQL_PASSWORD=syn_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

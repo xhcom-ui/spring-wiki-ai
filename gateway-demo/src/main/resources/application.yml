@@ -1,0 +1,45 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: demo-route
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/**
+          filters:
+            - StripPrefix=1
+
+# So-Token配置
+sa:
+  token:
+    # token名称 (同时也是cookie名称)
+    token-name: so-token
+    # token有效期，单位秒
+    timeout: 86400
+    # token风格
+    style: uuid
+    # 是否输出操作日志
+    is-log: true
+
+# 插件配置
+plugin:
+  # 插件目录
+  directory: plugins
+  # 插件扫描间隔（秒）
+  scan-interval: 5
+
+# 服务器配置
+server:
+  port: 8080
+
+# 日志配置
+logging:
+  level:
+    com.gateway: info
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

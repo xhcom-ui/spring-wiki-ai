@@ -1,0 +1,20 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: sk-api
+
+# API Key 配置
+api:
+  keys:
+    - key1
+    - key2
+    - key3
+  # 令牌桶配置
+  rate-limit:
+    capacity: 100
+    fill-rate: 50
+  # 重试配置
+  retry:
+    max-retries: 3

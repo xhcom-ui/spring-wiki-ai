@@ -1,0 +1,51 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: flowlong-demo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/flowlong_db
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+
+# FlowLong 配置
+flowlong:
+  reminder:
+    cron: "0 */5 * * * ?"  # 定时任务配置
+  eventing:
+    task: true  # 任务事件监听
+
+# Sa-Token 配置
+sa-token:
+  # token名称 (同时也是cookie名称)
+  token-name: satoken
+  # token有效期，单位秒，默认30天
+  timeout: 2592000
+  # token临时有效期 (指定时间内无操作就视为token过期)，单位秒
+  activity-timeout: -1
+  # 是否允许同一账号多地同时登录 （为true时允许一起登录, 为false时新登录挤掉旧登录）
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
+  is-share: true
+  # token风格
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: true
+
+# 日志配置
+logging:
+  level:
+    mybatis.mate: debug

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 50px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .profile-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .profile-info h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .profile-info p {
+            color: #666;
+            margin: 5px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #0069d9;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Profile</h1>
+        <div class="profile-info">
+            <h2>Detailed Information</h2>
+            <p><strong>Subject:</strong> <span th:text="${user.name}"></span></p>
+            <p><strong>Name:</strong> <span th:text="${user.attributes.name}"></span></p>
+            <p><strong>Email:</strong> <span th:text="${user.attributes.email}"></span></p>
+            <p><strong>Authorities:</strong> <span th:text="${user.authorities}"></span></p>
+            <p><strong>Attributes:</strong> <span th:text="${user.attributes}"></span></p>
+        </div>
+        <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</body>
+</html>

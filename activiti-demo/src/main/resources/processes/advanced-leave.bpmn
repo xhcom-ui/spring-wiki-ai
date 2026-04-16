@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.activiti.org/test">
+  <process id="advancedLeaveProcess" name="高级请假流程" isExecutable="true">
+    <startEvent id="startEvent1" name="开始" />
+    <userTask id="submitTask" name="提交申请" activiti:assignee="${applicant}" />
+    <sequenceFlow id="flow1" sourceRef="startEvent1" targetRef="submitTask" />
+    <serviceTask id="validateTask" name="验证申请" activiti:class="com.example.activiti.service.ValidationService" />
+    <sequenceFlow id="flow2" sourceRef="submitTask" targetRef="validateTask" />
+    <exclusiveGateway id="validationGateway" name="验证结果" />
+    <sequenceFlow id="flow3" sourceRef="validateTask" targetRef="validationGateway" />
+    <userTask id="deptManagerTask" name="部门经理审批" activiti:assignee="${deptManager}" />
+    <sequenceFlow id="flow4" sourceRef="validationGateway" targetRef="deptManagerTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${validationResult == 'valid'}]]></conditionExpression>
+    </sequenceFlow>
+    <endEvent id="invalidEnd" name="无效申请" />
+    <sequenceFlow id="flow5" sourceRef="validationGateway" targetRef="invalidEnd">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${validationResult == 'invalid'}]]></conditionExpression>
+    </sequenceFlow>
+    <timerEventDefinition id="timerEventDefinition1">
+      <timeDuration>PT24H</timeDuration>
+    </timerEventDefinition>
+    <intermediateCatchEvent id="timerEvent" name="审批超时" />
+    <sequenceFlow id="flow6" sourceRef="deptManagerTask" targetRef="timerEvent" />
+    <serviceTask id="escalationTask" name="升级处理" activiti:class="com.example.activiti.service.EscalationService" />
+    <sequenceFlow id="flow7" sourceRef="timerEvent" targetRef="escalationTask" />
+    <exclusiveGateway id="deptGateway" name="部门经理审批结果" />
+    <sequenceFlow id="flow8" sourceRef="deptManagerTask" targetRef="deptGateway" />
+    <userTask id="generalManagerTask" name="总经理审批" activiti:assignee="${generalManager}" />
+    <sequenceFlow id="flow9" sourceRef="deptGateway" targetRef="generalManagerTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${deptApproval == 'approved'}]]></conditionExpression>
+    </sequenceFlow>
+    <endEvent id="rejectedEnd" name="拒绝" />
+    <sequenceFlow id="flow10" sourceRef="deptGateway" targetRef="rejectedEnd">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${deptApproval == 'rejected'}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow11" sourceRef="escalationTask" targetRef="generalManagerTask" />
+    <exclusiveGateway id="generalGateway" name="总经理审批结果" />
+    <sequenceFlow id="flow12" sourceRef="generalManagerTask" targetRef="generalGateway" />
+    <serviceTask id="notificationTask" name="通知申请人" activiti:class="com.example.activiti.service.NotificationService" />
+    <sequenceFlow id="flow13" sourceRef="generalGateway" targetRef="notificationTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${generalApproval == 'approved'}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow14" sourceRef="generalGateway" targetRef="rejectedEnd">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${generalApproval == 'rejected'}]]></conditionExpression>
+    </sequenceFlow>
+    <endEvent id="approvedEnd" name="批准" />
+    <sequenceFlow id="flow15" sourceRef="notificationTask" targetRef="approvedEnd" />
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_advancedLeaveProcess">
+    <bpmndi:BPMNPlane bpmnElement="advancedLeaveProcess" id="BPMNPlane_advancedLeaveProcess">
+      <bpmndi:BPMNShape bpmnElement="startEvent1" id="BPMNShape_startEvent1">
+        <omgdc:Bounds height="30.0" width="30.0" x="100.0" y="100.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="submitTask" id="BPMNShape_submitTask">
+        <omgdc:Bounds height="50.0" width="100.0" x="160.0" y="90.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="validateTask" id="BPMNShape_validateTask">
+        <omgdc:Bounds height="50.0" width="100.0" x="290.0" y="90.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="validationGateway" id="BPMNShape_validationGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="420.0" y="95.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="deptManagerTask" id="BPMNShape_deptManagerTask">
+        <omgdc:Bounds height="50.0" width="100.0" x="490.0" y="90.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="invalidEnd" id="BPMNShape_invalidEnd">
+        <omgdc:Bounds height="30.0" width="30.0" x="490.0" y="180.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="timerEvent" id="BPMNShape_timerEvent">
+        <omgdc:Bounds height="36.0" width="36.0" x="620.0" y="92.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="escalationTask" id="BPMNShape_escalationTask">
+        <omgdc:Bounds height="50.0" width="100.0" x="690.0" y="85.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="deptGateway" id="BPMNShape_deptGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="620.0" y="95.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="generalManagerTask" id="BPMNShape_generalManagerTask">
+        <omgdc:Bounds height="50.0" width="100.0" x="720.0" y="90.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="rejectedEnd" id="BPMNShape_rejectedEnd">
+        <omgdc:Bounds height="30.0" width="30.0" x="850.0" y="180.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="generalGateway" id="BPMNShape_generalGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="850.0" y="95.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="notificationTask" id="BPMNShape_notificationTask">
+        <omgdc:Bounds height="50.0" width="100.0" x="920.0" y="90.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="approvedEnd" id="BPMNShape_approvedEnd">
+        <omgdc:Bounds height="30.0" width="30.0" x="1050.0" y="100.0" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="flow1" id="BPMNEdge_flow1">
+        <omgdi:waypoint x="130.0" y="115.0" />
+        <omgdi:waypoint x="160.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="260.0" y="115.0" />
+        <omgdi:waypoint x="290.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="390.0" y="115.0" />
+        <omgdi:waypoint x="420.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4">
+        <omgdi:waypoint x="440.0" y="95.0" />
+        <omgdi:waypoint x="440.0" y="115.0" />
+        <omgdi:waypoint x="490.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow5" id="BPMNEdge_flow5">
+        <omgdi:waypoint x="440.0" y="135.0" />
+        <omgdi:waypoint x="440.0" y="195.0" />
+        <omgdi:waypoint x="490.0" y="195.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+        <omgdi:waypoint x="590.0" y="115.0" />
+        <omgdi:waypoint x="620.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+        <omgdi:waypoint x="656.0" y="110.0" />
+        <omgdi:waypoint x="690.0" y="110.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+        <omgdi:waypoint x="590.0" y="115.0" />
+        <omgdi:waypoint x="620.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9">
+        <omgdi:waypoint x="640.0" y="95.0" />
+        <omgdi:waypoint x="640.0" y="115.0" />
+        <omgdi:waypoint x="720.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
+        <omgdi:waypoint x="640.0" y="135.0" />
+        <omgdi:waypoint x="640.0" y="195.0" />
+        <omgdi:waypoint x="850.0" y="195.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow11" id="BPMNEdge_flow11">
+        <omgdi:waypoint x="790.0" y="110.0" />
+        <omgdi:waypoint x="720.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow12" id="BPMNEdge_flow12">
+        <omgdi:waypoint x="820.0" y="115.0" />
+        <omgdi:waypoint x="850.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow13" id="BPMNEdge_flow13">
+        <omgdi:waypoint x="870.0" y="95.0" />
+        <omgdi:waypoint x="870.0" y="115.0" />
+        <omgdi:waypoint x="920.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow14" id="BPMNEdge_flow14">
+        <omgdi:waypoint x="870.0" y="135.0" />
+        <omgdi:waypoint x="870.0" y="195.0" />
+        <omgdi:waypoint x="850.0" y="195.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow15" id="BPMNEdge_flow15">
+        <omgdi:waypoint x="1020.0" y="115.0" />
+        <omgdi:waypoint x="1050.0" y="115.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

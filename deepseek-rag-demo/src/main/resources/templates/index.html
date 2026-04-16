@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek + RAG 知识库问答</title>
+    <!-- Marked.js 用于 Markdown 渲染 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- highlight.js 用于代码高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; height: 100vh; display: flex; }
+
+        /* 侧边栏 */
+        .sidebar { width: 260px; background: #1a1a2e; color: #fff; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #2a2a4a; }
+        .sidebar-header h2 { font-size: 18px; color: #e0e0e0; }
+        .sidebar-header p { font-size: 12px; color: #888; margin-top: 5px; }
+        .sidebar-nav { flex: 1; padding: 10px; overflow-y: auto; }
+        .nav-item { padding: 12px 15px; border-radius: 8px; cursor: pointer; margin-bottom: 5px; transition: all 0.2s; font-size: 14px; }
+        .nav-item:hover { background: #2a2a4a; }
+        .nav-item.active { background: #4a4a8a; }
+        .mode-switch { padding: 15px; border-top: 1px solid #2a2a4a; }
+        .mode-switch label { display: block; font-size: 12px; color: #888; margin-bottom: 8px; }
+        .mode-switch select { width: 100%; padding: 8px; border-radius: 6px; border: none; background: #2a2a4a; color: #fff; font-size: 14px; }
+
+        /* 主区域 */
+        .main { flex: 1; display: flex; flex-direction: column; max-height: 100vh; }
+        .header { padding: 15px 25px; background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 20px; color: #333; }
+        .header .mode-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge-rag { background: #fff3e0; color: #e65100; }
+        .badge-deepseek { background: #e3f2fd; color: #1565c0; }
+
+        /* 聊天区 */
+        .chat-container { flex: 1; overflow-y: auto; padding: 20px; }
+        .message { margin-bottom: 20px; display: flex; gap: 12px; }
+        .message.user { flex-direction: row-reverse; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .avatar.bot { background: #4a4a8a; color: #fff; }
+        .avatar.user-av { background: #2196f3; color: #fff; }
+        .bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+        .message.user .bubble { background: #2196f3; color: #fff; border-bottom-right-radius: 4px; }
+        .message.bot .bubble { background: #fff; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .bubble .reference { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 12px; color: #888; }
+        /* Markdown 样式 */
+        .bubble pre { background: #f6f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+        .bubble code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SFMono-Regular', Consolas, monospace; }
+        .bubble pre code { background: none; padding: 0; }
+        .bubble p { margin: 6px 0; }
+        .bubble ul, .bubble ol { padding-left: 20px; margin: 6px 0; }
+        .bubble blockquote { border-left: 3px solid #ddd; margin: 8px 0; padding-left: 12px; color: #666; }
+        .bubble h1,.bubble h2,.bubble h3,.bubble h4 { margin: 10px 0 5px; }
+
+        /* 输入区 */
+        .input-area { padding: 15px 25px; background: #fff; border-top: 1px solid #e0e0e0; }
+        .input-wrapper { display: flex; gap: 10px; align-items: flex-end; }
+        .input-wrapper textarea { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 12px; font-size: 14px; resize: none; min-height: 44px; max-height: 120px; outline: none; font-family: inherit; }
+        .input-wrapper textarea:focus { border-color: #2196f3; }
+        .input-wrapper button { padding: 12px 24px; background: #2196f3; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; white-space: nowrap; transition: background 0.2s; }
+        .input-wrapper button:hover { background: #1976d2; }
+        .input-wrapper button:disabled { background: #bbb; cursor: not-allowed; }
+
+        .welcome { text-align: center; padding: 60px 20px; color: #999; }
+        .welcome h2 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        .welcome p { font-size: 14px; line-height: 1.8; }
+        .feature-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 30px; max-width: 700px; margin-left: auto; margin-right: auto; }
+        .feature-card { padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.2s; }
+        .feature-card:hover { transform: translateY(-2px); }
+        .feature-card .icon { font-size: 28px; margin-bottom: 10px; }
+        .feature-card h3 { font-size: 14px; color: #333; margin-bottom: 5px; }
+        .feature-card p { font-size: 12px; color: #888; }
+
+        .typing-indicator { display: inline-block; }
+        .typing-indicator span { display: inline-block; width: 6px; height: 6px; background: #999; border-radius: 50%; margin-right: 3px; animation: typing 1s infinite; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>DeepSeek + RAG</h2>
+            <p>知识库问答系统</p>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="location.href='/'">💬 对话问答</div>
+            <div class="nav-item" onclick="location.href='/datasets'">📚 知识库管理</div>
+        </div>
+        <div class="mode-switch">
+            <label>对话模式</label>
+            <select id="chatMode" onchange="switchMode()">
+                <option value="rag">RAG 知识库问答</option>
+                <option value="deepseek">DeepSeek 直接对话</option>
+            </select>
+        </div>
+        <div class="mode-switch">
+            <button onclick="clearChat()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#f44336;color:#fff;cursor:pointer;font-size:13px;">🗑️ 清空对话</button>
+        </div>
+    </div>
+
+    <!-- 主区域 -->
+    <div class="main">
+        <div class="header">
+            <h1>知识库问答</h1>
+            <span id="modeBadge" class="mode-badge badge-rag">RAG 知识库</span>
+        </div>
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome" id="welcomeMsg">
+                <h2>欢迎使用 DeepSeek + RAG 知识库问答系统</h2>
+                <p>基于 RAG 技术，自实现文档解析→切分→向量化→检索→生成全流程</p>
+                <div class="feature-cards">
+                    <div class="feature-card" onclick="sendQuick('请介绍一下知识库中的主要内容')">
+                        <div class="icon">📚</div>
+                        <h3>知识库问答</h3>
+                        <p>基于 RAG 检索增强回答</p>
+                    </div>
+                    <div class="feature-card" onclick="sendQuick('帮我分析一下这个问题')">
+                        <div class="icon">🤖</div>
+                        <h3>DeepSeek 对话</h3>
+                        <p>直接与 DeepSeek 大模型对话</p>
+                    </div>
+                    <div class="feature-card" onclick="sendQuick('请根据知识库内容详细解答')">
+                        <div class="icon">🔍</div>
+                        <h3>文档检索</h3>
+                        <p>仅检索相关文档片段</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea id="questionInput" placeholder="输入您的问题，按 Enter 发送..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+                <button id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置 Marked.js
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true
+        });
+
+        const chatContainer = document.getElementById('chatContainer');
+        const questionInput = document.getElementById('questionInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const modeBadge = document.getElementById('modeBadge');
+        let currentSessionId = null;
+
+        // 初始化会话
+        async function initSession() {
+            try {
+                const resp = await fetch('/api/chat/session', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) currentSessionId = data.sessionId;
+            } catch(e) { console.log('初始化会话失败', e); }
+        }
+        initSession();
+
+        // 自动调整文本框高度
+        questionInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function switchMode() {
+            const mode = document.getElementById('chatMode').value;
+            modeBadge.className = 'mode-badge';
+            if (mode === 'rag') {
+                modeBadge.classList.add('badge-rag');
+                modeBadge.textContent = 'RAG 知识库';
+            } else {
+                modeBadge.classList.add('badge-deepseek');
+                modeBadge.textContent = 'DeepSeek 对话';
+            }
+        }
+
+        function sendQuick(question) {
+            questionInput.value = question;
+            sendMessage();
+        }
+
+        function addMessage(role, content) {
+            document.getElementById('welcomeMsg').style.display = 'none';
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${role === 'user' ? 'user-av' : 'bot'}`;
+            avatar.textContent = role === 'user' ? '👤' : '🤖';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            // 用户消息纯文本，助手消息 Markdown 渲染
+            if (role === 'user') {
+                bubble.textContent = content;
+            } else {
+                bubble.innerHTML = marked.parse(content);
+            }
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return bubble;
+        }
+
+        function addTypingIndicator() {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message bot';
+            msgDiv.id = 'typingMsg';
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar bot';
+            avatar.textContent = '🤖';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typing = document.getElementById('typingMsg');
+            if (typing) typing.remove();
+        }
+
+        function clearChat() {
+            if (currentSessionId) {
+                fetch('/api/chat/history/' + currentSessionId, { method: 'DELETE' });
+            }
+            chatContainer.innerHTML = '<div class="welcome" id="welcomeMsg"><h2>欢迎使用 DeepSeek + RAG 知识库问答系统</h2><p>基于 RAG 技术，自实现文档解析→切分→向量化→检索→生成全流程</p></div>';
+            initSession();
+        }
+
+        async function sendMessage() {
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            const mode = document.getElementById('chatMode').value;
+            questionInput.value = '';
+            questionInput.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            addMessage('user', question);
+            addTypingIndicator();
+
+            try {
+                if (mode === 'rag') {
+                    await streamChat('/api/chat/rag/stream', question);
+                } else {
+                    await streamChat('/api/chat/deepseek/stream', question);
+                }
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('bot', '请求失败: ' + error.message);
+            }
+
+            sendBtn.disabled = false;
+            questionInput.focus();
+        }
+
+        async function streamChat(url, question) {
+            const fullUrl = url + '?question=' + encodeURIComponent(question) + (currentSessionId ? '&sessionId=' + currentSessionId : '');
+            const response = await fetch(fullUrl);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            removeTypingIndicator();
+            const bubble = addMessage('bot', '');
+            let fullText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data:')) {
+                        const data = line.substring(5).trim();
+                        if (data === '[DONE]') continue;
+                        if (data) {
+                            fullText += data;
+                            // 流式渲染 Markdown
+                            bubble.innerHTML = marked.parse(fullText);
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

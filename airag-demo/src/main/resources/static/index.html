@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI RAG 系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        h2 {
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.clear {
+            background-color: #f44336;
+        }
+
+        button.clear:hover {
+            background-color: #da190b;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .error {
+            border-left-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI RAG 系统</h1>
+
+        <!-- 文档上传 -->
+        <div class="section">
+            <h2>文档上传</h2>
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="file">选择文件:</label>
+                    <input type="file" id="file" name="file" required>
+                </div>
+                <div class="form-group">
+                    <label for="docType">文档类型:</label>
+                    <select id="docType" name="docType" required>
+                        <option value="pdf">PDF</option>
+                        <option value="docx">DOCX</option>
+                        <option value="xlsx">XLSX</option>
+                        <option value="txt">TXT</option>
+                    </select>
+                </div>
+                <button type="submit">上传并索引</button>
+            </form>
+            <div id="uploadResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 智能查询 -->
+        <div class="section">
+            <h2>智能查询</h2>
+            <form id="queryForm">
+                <div class="form-group">
+                    <label for="question">问题:</label>
+                    <textarea id="question" name="question" placeholder="请输入您的问题" required></textarea>
+                </div>
+                <button type="submit">查询</button>
+            </form>
+            <div id="queryResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 清空向量库 -->
+        <div class="section">
+            <h2>向量库管理</h2>
+            <button id="clearBtn" class="clear">清空向量库</button>
+            <div id="clearResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // API 基础 URL
+        const API_BASE_URL = 'http://localhost:8080/api';
+
+        // 文档上传
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('file', document.getElementById('file').files[0]);
+            formData.append('docType', document.getElementById('docType').value);
+
+            const resultDiv = document.getElementById('uploadResult');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '上传中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/rag/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.code === 0) {
+                    resultDiv.textContent = data.data;
+                    resultDiv.className = 'result';
+                } else {
+                    resultDiv.textContent = '错误: ' + data.msg;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = '上传失败: ' + error.message;
+                resultDiv.className = 'result error';
+            }
+        });
+
+        // 智能查询
+        document.getElementById('queryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const question = document.getElementById('question').value;
+            const resultDiv = document.getElementById('queryResult');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '查询中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/rag/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+                if (data.code === 0) {
+                    resultDiv.textContent = data.data;
+                    resultDiv.className = 'result';
+                } else {
+                    resultDiv.textContent = '错误: ' + data.msg;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = '查询失败: ' + error.message;
+                resultDiv.className = 'result error';
+            }
+        });
+
+        // 清空向量库
+        document.getElementById('clearBtn').addEventListener('click', async function() {
+            if (!confirm('确定要清空向量库吗？')) {
+                return;
+            }
+
+            const resultDiv = document.getElementById('clearResult');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '清空中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/rag/clear`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                if (data.code === 0) {
+                    resultDiv.textContent = data.data;
+                    resultDiv.className = 'result';
+                } else {
+                    resultDiv.textContent = '错误: ' + data.msg;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = '清空失败: ' + error.message;
+                resultDiv.className = 'result error';
+            }
+        });
+    </script>
+</body>
+</html>

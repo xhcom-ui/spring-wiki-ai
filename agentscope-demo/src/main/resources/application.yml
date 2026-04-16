@@ -1,0 +1,51 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: agentscope-demo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/agentscope_db
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+
+# AgentScope 配置
+agentscope:
+  # 模型配置
+  model:
+    type: tongyi
+    api-key: ${TONGYI_API_KEY}
+    model-name: qwen-turbo
+  # 向量数据库配置
+  vector-db:
+    type: vechain
+    endpoint: http://localhost:8000
+    api-key: ${VECTOR_DB_API_KEY}
+  # 工具配置
+  tools:
+    search:
+      enabled: true
+      endpoint: https://api.duckduckgo.com
+    code-execution:
+      enabled: true
+    file-operation:
+      enabled: true
+    calculator:
+      enabled: true
+
+# 日志配置
+logging:
+  level:
+    com.example.agentscope: debug

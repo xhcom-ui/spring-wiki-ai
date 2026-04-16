@@ -1,0 +1,63 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: text2sql-demo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/text2sql_db
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+# OpenAI 配置
+openai:
+  api-key: your-openai-api-key
+  model: gpt-3.5-turbo
+  temperature: 0.3
+
+# 数据库配置
+text2sql:
+  database:
+    type: postgresql  # 支持 postgresql, mysql
+    tables: # 数据库表结构信息
+      - name: users
+        columns:
+          - name: id
+            type: integer
+            description: 用户ID
+          - name: name
+            type: varchar
+            description: 用户名
+          - name: email
+            type: varchar
+            description: 邮箱
+          - name: age
+            type: integer
+            description: 年龄
+          - name: created_at
+            type: timestamp
+            description: 创建时间
+      - name: orders
+        columns:
+          - name: id
+            type: integer
+            description: 订单ID
+          - name: user_id
+            type: integer
+            description: 用户ID
+          - name: amount
+            type: decimal
+            description: 订单金额
+          - name: status
+            type: varchar
+            description: 订单状态
+          - name: created_at
+            type: timestamp
+            description: 创建时间

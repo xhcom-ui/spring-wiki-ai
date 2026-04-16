@@ -1,0 +1,286 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+#app {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.nav-menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.nav-btn {
+    padding: 10px 20px;
+    background-color: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.nav-btn:hover {
+    background-color: #d0d0d0;
+}
+
+.nav-btn.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.section {
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+h2 {
+    color: #555;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+h3 {
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-group label {
+    font-weight: bold;
+}
+
+.input-group input {
+    width: 100px;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.session-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    border: 1px solid #bbdefb;
+    margin-bottom: 15px;
+}
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-messages {
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #fff;
+}
+
+.message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    max-width: 80%;
+}
+
+.message.user {
+    background-color: #e3f2fd;
+    align-self: flex-end;
+    margin-left: auto;
+    border-bottom-right-radius: 2px;
+}
+
+.message.assistant {
+    background-color: #f5f5f5;
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+
+.message-content {
+    word-wrap: break-word;
+}
+
+.chat-input {
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input textarea {
+    flex: 1;
+    min-height: 80px;
+}
+
+.document-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #e8f5e8;
+    border-radius: 4px;
+    border: 1px solid #c8e6c9;
+}
+
+.result h3 {
+    margin-bottom: 10px;
+    color: #2e7d32;
+}
+
+.result pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.result code {
+    font-family: 'Courier New', monospace;
+}
+
+.variables-section {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.variable-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.variable-input label {
+    font-weight: bold;
+    min-width: 100px;
+}
+
+.variable-input input {
+    flex: 1;
+}
+
+.add-variable {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.add-variable input {
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+    .nav-menu {
+        justify-content: center;
+    }
+    
+    .nav-btn {
+        font-size: 12px;
+        padding: 8px 15px;
+    }
+    
+    .chat-input {
+        flex-direction: column;
+    }
+    
+    .message {
+        max-width: 95%;
+    }
+    
+    .session-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

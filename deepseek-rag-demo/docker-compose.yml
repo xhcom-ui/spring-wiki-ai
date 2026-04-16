@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  deepseek-rag-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deepseek-rag-demo
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_AI_OPENAI_API_KEY=${DEEPSEEK_API_KEY}
+      - SPRING_AI_OPENAI_BASE_URL=https://api.deepseek.com
+      - RAG_SEARCH_TOP_K=${RAG_SEARCH_TOP_K:-5}
+      - RAG_SEARCH_SIMILARITY_THRESHOLD=${RAG_SEARCH_SIMILARITY_THRESHOLD:-0.5}
+      - RAG_CHUNK_DEFAULT_CHUNK_SIZE=${RAG_CHUNK_SIZE:-800}
+      - RAG_UPLOAD_DIR=/app/uploads
+    volumes:
+      - ./uploads:/app/uploads
+      - ./vector-store:/app/vector-store
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

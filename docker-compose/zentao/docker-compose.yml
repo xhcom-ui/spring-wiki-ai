@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  zentao:
+    image: easysoft/zentao:latest
+    container_name: zentao
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./data:/www/zentaopms
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root123
+      - ZENTAO_DB_HOST=mysql
+      - ZENTAO_DB_PORT=3306
+      - ZENTAO_DB_USER=root
+      - ZENTAO_DB_PASSWORD=root123
+      - ZENTAO_DB_NAME=zentao
+    depends_on:
+      - mysql
+    networks:
+      - zentao-network
+
+  mysql:
+    image: mysql:5.7
+    container_name: zentao-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: zentao
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    networks:
+      - zentao-network
+
+networks:
+  zentao-network:
+    driver: bridge

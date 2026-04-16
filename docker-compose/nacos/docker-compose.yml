@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  nacos:
+    image: nacos/nacos-server:latest
+    container_name: nacos
+    restart: always
+    ports:
+      - "8848:8848"
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=root123
+    depends_on:
+      - mysql
+    networks:
+      - nacos-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: nacos-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: nacos
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - nacos-network
+
+networks:
+  nacos-network:
+    driver: bridge

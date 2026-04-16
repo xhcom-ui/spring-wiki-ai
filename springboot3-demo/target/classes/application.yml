@@ -1,0 +1,5 @@
+# application.yml
+spring:
+  threads:
+    virtual:
+      enabled: true

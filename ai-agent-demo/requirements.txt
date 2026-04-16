@@ -1,0 +1,22 @@
+# 核心依赖
+openai==1.35.14
+langchain==0.2.10
+langchain-openai==0.1.19
+langchain-core==0.2.22
+
+# 工具依赖
+requests==2.32.3
+python-dotenv==1.0.1
+
+# 数据处理
+pydantic==2.7.3
+pydantic-settings==2.1.0
+
+# 向量数据库
+chromadb==1.1.1
+
+# 代码执行
+executing==2.0.1
+
+# 日志
+loguru==0.7.2

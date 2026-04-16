@@ -1,0 +1,53 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: auth-server
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auth_db
+    username: postgres
+    password: postgres123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    database: 0
+
+# OAuth2 配置
+spring.security.oauth2.authorization-server:
+  issuer: http://localhost:9000
+  client:
+    registration:
+      client-app:
+        client-id: client-app
+        client-secret: secret
+        redirect-uris: http://localhost:8080/login/oauth2/code/client-app
+        post-logout-redirect-uris: http://localhost:8080
+        client-authentication-methods: client_secret_basic
+        authorization-grant-types: authorization_code,refresh_token
+        scopes: openid,profile,email,read,write
+      resource-server:
+        client-id: resource-server
+        client-secret: secret
+        client-authentication-methods: client_secret_basic
+        authorization-grant-types: client_credentials
+        scopes: read,write
+  authorization-endpoint:
+    enabled: true
+  token-endpoint:
+    enabled: true
+  jwk-set-uri: /oauth2/jwks
+  token-revocation-endpoint:
+    enabled: true
+  token-introspection-endpoint:
+    enabled: true
+  user-info-endpoint:
+    enabled: true
+  logout-endpoint:
+    enabled: true

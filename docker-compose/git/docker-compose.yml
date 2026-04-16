@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  git-server:
+    image: gitea/gitea:latest
+    container_name: git-server
+    restart: always
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - ./data:/data
+    environment:
+      - GITEA__database__DB_TYPE=sqlite3
+    networks:
+      - git-network
+
+networks:
+  git-network:
+    driver: bridge

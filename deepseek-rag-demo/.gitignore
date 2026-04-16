@@ -1,0 +1,6 @@
+target/
+uploads/
+vector-store/
+*.iml
+.idea/
+.DS_Store

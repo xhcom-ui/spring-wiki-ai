@@ -1,0 +1,13 @@
+org\wiki\config\AiConfig.class
+org\wiki\entity\Address.class
+org\wiki\service\StructuredOutputService$2.class
+org\wiki\service\StructuredOutputService.class
+org\wiki\converter\CustomStructuredOutputConverter.class
+org\wiki\StructuredOutputApplication.class
+org\wiki\entity\MovieRecommendation.class
+org\wiki\entity\CodeReview.class
+org\wiki\controller\StructuredOutputController.class
+org\wiki\entity\CodeReview$Issue.class
+org\wiki\entity\ActorFilms.class
+org\wiki\service\StructuredOutputService$1.class
+org\wiki\test\StructuredOutputServiceTest.class

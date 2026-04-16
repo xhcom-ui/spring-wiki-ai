@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+    networks:
+      - elk-skywalking-network
+
+  logstash:
+    image: logstash:7.17.0
+    container_name: logstash
+    restart: always
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk-skywalking-network
+
+  kibana:
+    image: kibana:7.17.0
+    container_name: kibana
+    restart: always
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk-skywalking-network
+
+  skywalking-oap:
+    image: apache/skywalking-oap-server:8.10.0
+    container_name: skywalking-oap
+    restart: always
+    ports:
+      - "11800:11800"
+      - "12800:12800"
+    environment:
+      - SW_STORAGE=elasticsearch
+      - SW_STORAGE_ES_CLUSTER_NODES=elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk-skywalking-network
+
+  skywalking-ui:
+    image: apache/skywalking-ui:8.10.0
+    container_name: skywalking-ui
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SW_OAP_ADDRESS=http://skywalking-oap:12800
+    depends_on:
+      - skywalking-oap
+    networks:
+      - elk-skywalking-network
+
+networks:
+  elk-skywalking-network:
+    driver: bridge

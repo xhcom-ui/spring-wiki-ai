@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  jira:
+    image: atlassian/jira-software:latest
+    container_name: jira
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/var/atlassian/application-data/jira
+    environment:
+      - JVM_MINIMUM_MEMORY=1g
+      - JVM_MAXIMUM_MEMORY=2g
+    networks:
+      - jira-network
+
+networks:
+  jira-network:
+    driver: bridge

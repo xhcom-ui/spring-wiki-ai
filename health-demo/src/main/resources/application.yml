@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: health-demo
+  datasource:
+    url: jdbc:mysql://localhost:3306/test_db?useSSL=false&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      pool-name: health-demo-pool
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000  # 连接泄漏检测阈值，单位毫秒
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+# 连接泄漏检测配置
+connection:
+  leak:
+    detection:
+      enabled: true
+      check-interval: 60000  # 检查间隔，单位毫秒
+      alert-enabled: true  # 是否启用告警
+      notify-url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=your_key"  # 企业微信告警地址
+
+# Actuator 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# Prometheus 配置
+micrometer:
+  prometheus:
+    enabled: true

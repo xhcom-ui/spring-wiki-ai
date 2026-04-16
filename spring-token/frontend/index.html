@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token 统计与费用计算</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <h1>Token 统计与费用计算</h1>
+        
+        <!-- 记录 Token 使用 -->
+        <div class="section">
+            <h2>记录 Token 使用</h2>
+            <div class="form">
+                <input type="text" v-model="tokenType" placeholder="Token 类型">
+                <input type="number" v-model.number="tokenCount" placeholder="Token 数量">
+                <button @click="recordTokenUsage">记录</button>
+            </div>
+        </div>
+        
+        <!-- 统计信息 -->
+        <div class="section">
+            <h2>统计信息</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">总 Token 数：</span>
+                    <span class="stat-value">{{ stats.totalTokens }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">总费用：</span>
+                    <span class="stat-value">{{ stats.totalCost.toFixed(2) }} 元</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">使用次数：</span>
+                    <span class="stat-value">{{ stats.usageCount }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Token 使用记录 -->
+        <div class="section">
+            <h2>Token 使用记录</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>类型</th>
+                        <th>数量</th>
+                        <th>费用</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="token in tokens" :key="token.id">
+                        <td>{{ token.type }}</td>
+                        <td>{{ token.count }}</td>
+                        <td>{{ token.cost.toFixed(2) }}</td>
+                        <td>{{ token.timestamp }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

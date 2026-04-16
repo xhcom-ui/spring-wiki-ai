@@ -1,0 +1,15 @@
+{
+  "registry-mirrors": [
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://hub-mirror.c.163.com",
+    "https://registry.docker-cn.com"
+  ],
+  "insecure-registries": [],
+  "debug": false,
+  "experimental": false,
+  "features": {
+    "buildkit": true
+  },
+  "max-concurrent-downloads": 10,
+  "max-concurrent-uploads": 10
+}

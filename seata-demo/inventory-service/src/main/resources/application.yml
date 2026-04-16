@@ -1,0 +1,58 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: inventory-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+  datasource:
+    url: jdbc:mysql://localhost:3306/seata_inventory?useUnicode=true&characterEncoding=utf-8&useSSL=false
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sleuth:
+    sampler:
+      probability: 1.0
+  zipkin:
+    base-url: http://localhost:9411
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.seata.demo.inventory.entity
+
+seata:
+  enabled: true
+  application-id: inventory-service
+  tx-service-group: my_test_tx_group
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: localhost:8848
+      group: SEATA_GROUP
+      namespace: 
+  config:
+    type: nacos
+    nacos:
+      server-addr: localhost:8848
+      group: SEATA_GROUP
+      namespace: 
+
+chaos:
+  monkey:
+    enabled: true
+    watcher:
+      controller: true
+      rest-controller: true
+      service: true
+    assaults:
+      level: 3
+      latency-active: true
+      latency-range-start: 1000
+      latency-range-end: 5000
+      exceptions-active: true
+      kill-application-active: false
+      memory-active: false

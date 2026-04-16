@@ -1,0 +1,28 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: jiajia-search-demo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/jiajia_search_db
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+# jiajia-search 配置
+jiajia:
+  python-path: python3
+  script-path: scripts/jiajia_search.py
+  vector-model-path: /path/to/your/multilingual-e5-small-onnx
+  rerank-model-path: /path/to/your/bge-reranker-v2-m3-ONNX
+  vector-dim: 384
+  rrf-k: 60
+  top-k-recall: 30
+  default-query-weight: 2.0

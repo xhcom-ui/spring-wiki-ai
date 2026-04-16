@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  mysql-master:
+    image: mysql:8.0
+    container_name: mysql-master
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+      MYSQL_DATABASE: db_master
+    volumes:
+      - ./db/init-master.sql:/docker-entrypoint-initdb.d/init.sql
+      - master_data:/var/lib/mysql
+    command:
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --binlog-do-db=db_master
+
+  mysql-slave:
+    image: mysql:8.0
+    container_name: mysql-slave
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+      MYSQL_DATABASE: db_slave
+    volumes:
+      - ./db/init-slave.sql:/docker-entrypoint-initdb.d/init.sql
+      - slave_data:/var/lib/mysql
+    depends_on:
+      - mysql-master
+    command:
+      - --server-id=2
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --binlog-do-db=db_slave
+
+  app:
+    build:
+      context: .
+    container_name: sharing-sphere-app
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql-master
+      - mysql-slave
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-master:3306/db_master
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root123
+
+volumes:
+  master_data:
+  slave_data:

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 服务演示</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <h1>MCP 服务演示</h1>
+        
+        <!-- 模型选择 -->
+        <div class="section">
+            <h2>模型选择</h2>
+            <div class="form">
+                <select v-model="selectedModel">
+                    <option v-for="model in models" :key="model.id" :value="model.id">
+                        {{ model.name }}
+                    </option>
+                </select>
+                <button @click="loadModels">刷新模型列表</button>
+                <button @click="createSession" :disabled="loading">
+                    {{ loading ? '创建中...' : '创建会话' }}
+                </button>
+            </div>
+        </div>
+        
+        <!-- 会话管理 -->
+        <div class="section" v-if="sessionId">
+            <h2>会话管理</h2>
+            <div class="session-info">
+                <p>会话 ID: {{ sessionId }}</p>
+                <button @click="closeSession" :disabled="loading">
+                    {{ loading ? '关闭中...' : '关闭会话' }}
+                </button>
+            </div>
+        </div>
+        
+        <!-- 消息交互 -->
+        <div class="section" v-if="sessionId">
+            <h2>消息交互</h2>
+            <div class="chat-container">
+                <div class="chat-messages">
+                    <div v-for="(message, index) in messages" :key="index" :class="['message', message.role]">
+                        <div class="message-content">{{ message.content }}</div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <textarea v-model="message" placeholder="输入消息..."></textarea>
+                    <button @click="sendMessage" :disabled="loading">
+                        {{ loading ? '发送中...' : '发送' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

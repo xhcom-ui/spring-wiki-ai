@@ -1,0 +1,18 @@
+# DFlash dependencies
+# For Transformers backend
+transformers
+torch
+
+# For SGLang backend
+sglang
+
+# For vLLM backend
+vllm
+
+# For MLX backend (Apple Silicon only)
+mlx
+mlx-lm
+
+# Other dependencies
+requests
+numpy

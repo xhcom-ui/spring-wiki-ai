@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  ip-sec:
+    image: strongswan/strongswan:latest
+    container_name: ip-sec
+    restart: always
+    ports:
+      - "500:500/udp"
+      - "4500:4500/udp"
+    volumes:
+      - ./config:/etc/ipsec.d
+    networks:
+      - ip-sec-network
+
+networks:
+  ip-sec-network:
+    driver: bridge

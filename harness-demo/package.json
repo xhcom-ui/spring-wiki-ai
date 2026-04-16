@@ -1,0 +1,37 @@
+{
+  "name": "harness-demo",
+  "version": "1.0.0",
+  "description": "A CLI-based AI Coding Agent",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && bun build src/main.tsx --outfile=dist/main.js",
+    "dev": "bun run src/main.tsx",
+    "start": "bun run dist/main.js",
+    "test": "bun test"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "cli",
+    "typescript",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.2.0",
+    "commander": "^11.0.0",
+    "zod": "^4.0.0",
+    "openai": "^4.0.0",
+    "@grpc/grpc-js": "^1.9.0",
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/sdk-node": "^0.46.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.0.0",
+    "typescript": "^5.0.0",
+    "@types/react": "^18.2.0",
+    "@types/commander": "^11.0.0"
+  }
+}
