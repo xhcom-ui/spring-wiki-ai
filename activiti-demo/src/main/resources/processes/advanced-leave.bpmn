@@ -16,10 +16,11 @@
     <sequenceFlow id="flow5" sourceRef="validationGateway" targetRef="invalidEnd">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${validationResult == 'invalid'}]]></conditionExpression>
     </sequenceFlow>
-    <timerEventDefinition id="timerEventDefinition1">
-      <timeDuration>PT24H</timeDuration>
-    </timerEventDefinition>
-    <intermediateCatchEvent id="timerEvent" name="审批超时" />
+    <intermediateCatchEvent id="timerEvent" name="审批超时">
+      <timerEventDefinition>
+        <timeDuration>PT24H</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
     <sequenceFlow id="flow6" sourceRef="deptManagerTask" targetRef="timerEvent" />
     <serviceTask id="escalationTask" name="升级处理" activiti:class="com.example.activiti.service.EscalationService" />
     <sequenceFlow id="flow7" sourceRef="timerEvent" targetRef="escalationTask" />

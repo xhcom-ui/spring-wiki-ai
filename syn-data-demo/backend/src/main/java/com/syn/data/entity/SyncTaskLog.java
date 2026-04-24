@@ -1,6 +1,7 @@
 package com.syn.data.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -34,6 +35,11 @@ public class SyncTaskLog implements Serializable {
     private String status;
 
     /**
+     * 任务名称
+     */
+    private String taskName;
+
+    /**
      * 开始时间
      */
     private LocalDateTime startTime;
@@ -49,14 +55,14 @@ public class SyncTaskLog implements Serializable {
     private Long duration;
 
     /**
-     * 源端数据量
+     * 处理总量
      */
-    private Long sourceCount;
+    private Long totalCount;
 
     /**
-     * 目标端数据量
+     * 成功数量
      */
-    private Long targetCount;
+    private Long successCount;
 
     /**
      * 失败数据量
@@ -69,8 +75,19 @@ public class SyncTaskLog implements Serializable {
     private String errorMessage;
 
     /**
+     * 执行参数
+     */
+    private String executionParams;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 仅用于页面展示的同步模式，不落库。
+     */
+    @TableField(exist = false)
+    private String syncMode;
 
 }

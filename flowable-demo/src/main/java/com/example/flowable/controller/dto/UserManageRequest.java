@@ -1,0 +1,16 @@
+package com.example.flowable.controller.dto;
+
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class UserManageRequest {
+    private String username;
+    private String password;
+    private String nickname;
+    private String email;
+    private String phone;
+    private Integer status;
+    private List<Long> roleIds;
+}

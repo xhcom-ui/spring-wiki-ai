@@ -265,10 +265,10 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { nextTick, ref, onMounted, onUnmounted } from 'vue'
 import axios from '../utils/request'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
+import { echarts } from '../utils/echarts'
 
 export default {
   name: 'DataQuality',
@@ -289,6 +289,7 @@ export default {
     let typeChartInstance = null
     let statusChartInstance = null
     let trendChartInstance = null
+    let resizeHandler = null
     
     // 表单数据
     const validationForm = ref({
@@ -320,7 +321,7 @@ export default {
     const fetchDataSources = async () => {
       try {
         const response = await axios.get('/api/datasource')
-        dataSourceList.value = response.data
+        dataSourceList.value = response.data || response
       } catch (error) {
         console.error('获取数据源列表失败:', error)
       }
@@ -336,13 +337,13 @@ export default {
           sourceData: { id: 1, name: 'test' },
           targetData: { id: 1, name: 'test' }
         })
-        validationResult.value = response.data
+        validationResult.value = response.data || response
         validationResultVisible.value = true
         
-        if (response.data.success) {
+        if (validationResult.value.success) {
           ElMessage.success('数据校验成功')
         } else {
-          ElMessage.error('数据校验失败: ' + response.data.message)
+          ElMessage.error('数据校验失败: ' + validationResult.value.message)
         }
       } catch (error) {
         console.error('执行数据校验失败:', error)
@@ -367,10 +368,12 @@ export default {
       try {
         const response = await axios.get('/api/data-quality/issues', {
           params: {
-            status: issueFilter.value.status
+            status: issueFilter.value.status,
+            type: issueFilter.value.type,
+            keyword: issueFilter.value.keyword
           }
         })
-        issues.value = response.data
+        issues.value = response.data || response
       } catch (error) {
         console.error('获取问题列表失败:', error)
         ElMessage.error('获取问题列表失败')
@@ -396,12 +399,13 @@ export default {
         const response = await axios.post(`/api/data-quality/issues/${currentIssue.value.id}/fix`, {
           fixStrategy: fixForm.value.strategy
         })
-        if (response.data.success) {
+        const payload = response.data || response
+        if (payload.success) {
           ElMessage.success('问题修复成功')
           fixIssueVisible.value = false
           searchIssues()
         } else {
-          ElMessage.error('问题修复失败: ' + response.data.message)
+          ElMessage.error('问题修复失败: ' + payload.message)
         }
       } catch (error) {
         console.error('执行修复失败:', error)
@@ -413,7 +417,7 @@ export default {
     const ignoreIssue = async (issue) => {
       try {
         const response = await axios.post(`/api/data-quality/issues/${issue.id}/ignore`)
-        if (response.data) {
+        if (response.data || response) {
           ElMessage.success('问题已忽略')
           searchIssues()
         } else {
@@ -433,7 +437,7 @@ export default {
             timeRange: statisticsForm.value.timeRange
           }
         })
-        initCharts(response.data)
+        initCharts(response.data || response)
         ElMessage.success('统计数据生成成功')
       } catch (error) {
         console.error('生成统计失败:', error)
@@ -456,7 +460,22 @@ export default {
     }
     
     // 初始化图表
-    const initCharts = (stats) => {
+    const initCharts = (stats = {}) => {
+      const typeSeriesData = stats.typeDistribution || [
+        { value: 30, name: '数量差异' },
+        { value: 15, name: '质量问题' },
+        { value: 20, name: '格式错误' },
+        { value: 10, name: '业务规则' }
+      ]
+      const statusSeriesData = stats.statusDistribution || [
+        { value: 40, name: '待处理' },
+        { value: 10, name: '处理中' },
+        { value: 20, name: '已修复' },
+        { value: 5, name: '已忽略' }
+      ]
+      const trendXAxis = stats.trend?.map(item => item.date || item.name) || ['1月10日', '1月11日', '1月12日', '1月13日', '1月14日', '1月15日']
+      const trendSeries = stats.trend?.map(item => item.count ?? item.value) || [12, 19, 15, 25, 18, 10]
+
       // 问题类型分布
       if (typeChartInstance) {
         typeChartInstance.dispose()
@@ -475,12 +494,7 @@ export default {
             name: '问题类型',
             type: 'pie',
             radius: '50%',
-            data: [
-              { value: 30, name: '数量差异' },
-              { value: 15, name: '质量问题' },
-              { value: 20, name: '格式错误' },
-              { value: 10, name: '业务规则' }
-            ],
+            data: typeSeriesData,
             emphasis: {
               itemStyle: {
                 shadowBlur: 10,
@@ -511,12 +525,7 @@ export default {
             name: '问题状态',
             type: 'pie',
             radius: '50%',
-            data: [
-              { value: 40, name: '待处理' },
-              { value: 10, name: '处理中' },
-              { value: 20, name: '已修复' },
-              { value: 5, name: '已忽略' }
-            ],
+            data: statusSeriesData,
             emphasis: {
               itemStyle: {
                 shadowBlur: 10,
@@ -540,14 +549,14 @@ export default {
         },
         xAxis: {
           type: 'category',
-          data: ['1月10日', '1月11日', '1月12日', '1月13日', '1月14日', '1月15日']
+          data: trendXAxis
         },
         yAxis: {
           type: 'value'
         },
         series: [
           {
-            data: [12, 19, 15, 25, 18, 10],
+            data: trendSeries,
             type: 'line',
             smooth: true
           }
@@ -603,21 +612,23 @@ export default {
     onMounted(() => {
       fetchDataSources()
       searchIssues()
-      
-      // 初始化图表
-      setTimeout(() => {
+
+      nextTick(() => {
         initCharts({})
-      }, 100)
-      
-      // 窗口大小改变时重新渲染图表
-      window.addEventListener('resize', () => {
+      })
+
+      resizeHandler = () => {
         typeChartInstance?.resize()
         statusChartInstance?.resize()
         trendChartInstance?.resize()
-      })
+      }
+      window.addEventListener('resize', resizeHandler)
     })
     
     onUnmounted(() => {
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+      }
       typeChartInstance?.dispose()
       statusChartInstance?.dispose()
       trendChartInstance?.dispose()

@@ -1,199 +1,179 @@
-# Spring Wiki AI
+# Spring Wiki AI 项目总览
 
-A collection of AI and Spring Boot demonstration projects, showcasing various technologies and use cases.
+这是一个以 `Spring Boot + AI + 工作流 + 多种中间件/工程能力` 为主题的示例仓库，包含大量独立 demo。仓库既有后端项目，也有前后端联动项目，还包含 Python、Django、Flask、WinForm 等不同技术栈的实验与样例。
 
-## Project Overview
+## 仓库说明
 
-This repository contains multiple demonstration projects that explore different aspects of AI integration with Spring Boot applications, workflow engines, caching strategies, and more.
+- 仓库根目录下每个 `*-demo` 或独立目录通常都是一个可单独运行的示例。
+- 大多数 Java 项目使用 `Maven`。
+- 部分项目带有 `frontend` 前端目录，通常基于 `Vue 3 + Vite`。
+- 各子项目的启动方式、依赖和业务说明，以子目录内自己的 `README.md` 为准。
 
-## Available Demos
+## 目录分类
 
-### AI and LLM Related
+### 1. AI / 大模型 / RAG 相关
 
-- **ai-agent-demo** - A Python-based AI agent demonstration
-- **airag-demo** - RAG (Retrieval-Augmented Generation) implementation
-- **deepseek-rag-demo** - DeepSeek model integration with RAG
-- **dflash-demo** - DFlash (Block Diffusion for Flash Speculative Decoding) acceleration for LLMs
-- **hugging-face-embeddings-demo** - Hugging Face embeddings integration
-- **langchain4j-demo** - LangChain4j integration with Spring Boot
-- **ollama-demo** - Ollama local LLM integration
-- **pageIndex-python** - Python-based page indexing and search
-- **prompt-demo** - Prompt engineering and management
-- **rag-demo** - Basic RAG implementation
-- **text2sql-demo** - Text-to-SQL conversion demonstration
-- **vectorstore-demo** - Vector store implementation for RAG
+- `ai-agent-demo`：AI Agent 示例
+- `agent-demo`：智能体相关实验
+- `agentscope-demo`：AgentScope 示例
+- `airag-demo`：RAG 示例
+- `deep-research-demo`：深度研究类示例
+- `deepseek-rag-demo`：DeepSeek + RAG 示例
+- `dflash-demo`：推理加速 / DFlash 相关示例
+- `hugging-face-embeddings-demo`：Hugging Face 向量/Embedding 示例
+- `langchain4j-demo`：LangChain4j 示例
+- `mcp-demo`：MCP（Model Context Protocol）相关示例
+- `memory-demo`：记忆能力相关示例
+- `ollama-demo`：Ollama 本地模型集成
+- `pageIndex-python`：页面索引与检索
+- `prompt-demo`：Prompt 管理/调试示例
+- `rag-demo`：基础 RAG 示例
+- `structured-demo`：结构化输出/结构化处理示例
+- `text2sql-demo`：Text-to-SQL 示例
+- `vectorstore-demo`：向量库示例
+- `yuque-ai`：语雀/知识库类 AI 集成示例
 
-### Workflow and Business Process
+### 2. 工作流 / BPM / 审批流相关
 
-- **activiti-demo** - Activiti BPMN workflow engine integration
-- **flowable-demo** - Flowable BPMN workflow engine integration
-- **flowlong-demo** - FlowLong workflow engine integration
+- `activiti-demo`：Activiti 工作流示例，含前端流程设计与运行时页面
+- `flowable-demo`：Flowable 工作流示例，含前端流程设计与运行时页面
+- `flowlong-demo`：FlowLong/自定义流程设计示例
 
-### Caching and Performance
+### 3. 安全 / 认证 / 权限相关
 
-- **hashmap-demo** - HashMap memory leak demonstration and Caffeine cache implementation
+- `sa-token-demo`：Sa-Token 示例
+- `security-demo`：Spring Security 示例
+- `security-oauth-demo`：OAuth2 / 认证授权示例
+- `spring-token`：Token 处理相关示例
 
-### Security and Authentication
+### 4. 微服务 / 网关 / 分布式相关
 
-- **security-demo** - Spring Security demonstration
-- **security-oauth-demo** - OAuth2 authentication demonstration
-- **sa-token-demo** - SA-Token authentication framework
+- `gateway-demo`：网关示例
+- `seata-demo`：分布式事务示例
+- `sharing-sphere-demo`：分库分表/数据分片示例
+- `sentinel-demo`：限流/熔断相关示例
 
-### Microservices and Architecture
+### 5. 数据 / 存储 / 检索相关
 
-- **gateway-demo** - Spring Cloud Gateway demonstration
-- **seata-demo** - Seata distributed transaction demonstration
-- **sharing-sphere-demo** - ShardingSphere database sharding demonstration
+- `mongo-plus-demo`：MongoDB 相关示例
+- `opendataloader-demo`：数据加载相关示例
+- `springboot-redis-mysql-demo`：Redis + MySQL 集成示例
+- `syn-data-demo`：数据同步示例
+- `jiajia-search-demo`：搜索相关示例
 
-### Other Demos
+### 6. Web / 前后端 / 全栈相关
 
-- **agentscope-demo** - AgentScope demonstration
-- **apache-bval-demo** - Apache BVal validation framework
-- **deep-research-demo** - Deep research capabilities
-- **harness-demo** - Harness CI/CD integration
-- **health-demo** - Health check implementation
-- **hutool-demo** - Hutool utility library
-- **jiajia-search-demo** - Jiajia search integration
-- **mcp-demo** - Model Context Protocol demonstration
-- **memory-demo** - Memory management demonstration
-- **mongo-plus-demo** - MongoDB integration
-- **opendataloader-demo** - Open data loader implementation
-- **park-demo** - Parking management system
-- **sk-api** - SK API integration
-- **spring-token** - Spring token implementation
-- **spring-vue** - Spring Boot + Vue.js integration
-- **spring-wiki** - Basic Spring Boot wiki application
-- **springboot-redis-mysql-demo** - Spring Boot with Redis and MySQL
-- **springboot3-demo** - Spring Boot 3.0 features demonstration
-- **sse-demo** - Server-Sent Events implementation
-- **structured-demo** - Structured data processing
-- **syn-data-demo** - Data synchronization demonstration
+- `django-demo`：Django 示例
+- `flask-demo`：Flask 示例
+- `spring-vue`：Spring Boot + Vue 示例
+- `spring-wiki`：Wiki/内容管理相关示例
+- `spring-python`：Spring 与 Python 协作相关示例
 
-## Getting Started
+### 7. 基础能力 / 框架 / 工具类示例
 
-### Prerequisites
+- `apache-bval-demo`：参数校验/校验框架示例
+- `hashmap-demo`：HashMap / 缓存 / 内存问题示例
+- `health-demo`：健康检查示例
+- `hutool-demo`：Hutool 工具库示例
+- `harness-demo`：Harness 相关示例
+- `netty-demo`：Netty 示例
+- `parent-demo`：父工程/聚合类示例
+- `park-demo`：停车场/业务管理示例
+- `sk-api`：API 对接相关示例
+- `springboot3-cache-demo`：Spring Boot 3 缓存示例
+- `springboot3-demo`：Spring Boot 3 功能示例
+- `sse-demo`：SSE 实时推送示例
+- `winform-sunnyui-demo`：WinForm / SunnyUI 示例
 
-- Java 11 or higher
-- Maven 3.6+ or Gradle 7+
-- Python 3.8+ (for Python-based demos)
-- Node.js 14+ (for frontend demos)
-- Docker and Docker Compose (for some demos)
+## 根目录主要文件
 
-### Installation
+- `README.md`：当前总览文档
+- `pom.xml`：根 Maven 配置
+- `build.sh`：批量构建脚本
+- `docker-compose.yml`：统一编排入口
+- `docker-compose/`：各类容器与中间件配置
+- `data/`：共享数据或初始化资源
 
-1. Clone the repository:
+## 推荐使用方式
+
+### 查看单个项目
+
+先进入具体子项目，再查看其说明文档：
 
 ```bash
-git clone https://github.com/yourusername/spring-wiki-ai.git
-cd spring-wiki-ai
+cd activiti-demo
+cat README.md
 ```
 
-1. For Java-based projects:
+### Java 项目常用命令
 
 ```bash
-# Build all projects
-./build.sh
-
-# Or build individual project
-cd [demo-name]
+cd 某个-demo
 mvn clean package
 ```
 
-1. For Python-based projects:
+开发运行：
 
 ```bash
-cd [demo-name]
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+cd 某个-demo
+mvn spring-boot:run
 ```
 
-1. For frontend projects:
+### 前端项目常用命令
 
 ```bash
-cd [demo-name]/frontend
+cd 某个-demo/frontend
 npm install
+npm run dev
+```
+
+生产构建：
+
+```bash
+cd 某个-demo/frontend
 npm run build
 ```
 
-### Running the Demos
+### Python 项目常用命令
 
-Each demo has its own README.md file with specific instructions. Please refer to the individual demo directories for detailed running instructions.
-
-### Common Commands
-
-- **Run Spring Boot application**:
-  ```bash
-  cd [demo-name]
-  mvn spring-boot:run
-  ```
-- **Run Python script**:
-  ```bash
-  cd [demo-name]
-  python [script-name].py
-  ```
-- **Start Docker services**:
-  ```bash
-  cd docker-compose/[service-name]
-  docker-compose up -d
-  ```
-
-## Key Technologies
-
-- **Backend**: Spring Boot, Spring Cloud, Java 11+
-- **Frontend**: Vue.js, JavaScript, HTML/CSS
-- **AI/ML**: Hugging Face, LangChain, Ollama, DFlash
-- **Databases**: MySQL, MongoDB, Redis
-- **Workflow**: Activiti, Flowable, FlowLong
-- **Security**: Spring Security, OAuth2, SA-Token
-- **Infrastructure**: Docker, Docker Compose
-
-## Project Structure
-
-```
-spring-wiki-ai/
-├── [demo-name]/         # Individual demo project
-│   ├── src/             # Source code
-│   ├── frontend/        # Frontend code (if applicable)
-│   ├── README.md        # Demo-specific documentation
-│   └── pom.xml          # Maven configuration
-├── docker-compose/      # Docker Compose configurations
-├── data/                # Shared data files
-├── build.sh             # Build script
-└── README.md            # This file
+```bash
+cd 某个目录
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
 ```
 
-## Contributing
+## 运行环境建议
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- `JDK 17+`：多数 Spring Boot 示例建议使用
+- `Maven 3.9+`
+- `Node.js 18+`：前端项目建议
+- `Python 3.10+`：Python 类项目建议
+- `Docker / Docker Compose`：涉及中间件时推荐使用
 
-### Guidelines
+> 注意：不同子项目的版本要求可能不同，最终以对应子项目 `README.md`、`pom.xml`、`package.json` 为准。
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## 当前仓库特点
+
+- 项目数量多，主题跨度大，适合作为内部实验仓、样例仓或功能验证仓使用。
+- 工作流相关项目（`activiti-demo`、`flowable-demo`、`flowlong-demo`）已经带有较完整的前后端联动示例。
+- AI 与 RAG 相关项目覆盖面较广，适合做选型、联调和 PoC。
+
+## 阅读建议
+
+如果你是第一次进入这个仓库，建议按下面顺序看：
+
+1. 先看你关心的大类目录，比如 `activiti-demo`、`flowable-demo`、`rag-demo`。
+2. 再看子项目中的 `README.md`。
+3. 最后根据 `pom.xml`、`package.json`、`application.yml` 或 `frontend/vite.config.*` 启动项目。
+
+## 补充说明
+
+- 根目录 README 只做总览，不展开每个项目的详细启动说明。
+- 如果某个子项目没有 README，优先看其目录结构、`pom.xml`、`src/main/resources/application*.yml` 和 `frontend/package.json`。
+- 仓库会持续演进，目录和功能可能变化，建议以实际代码为准。
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Spring Framework](https://spring.io/)
-- [Hugging Face](https://huggingface.co/)
-- [LangChain](https://www.langchain.com/)
-- [Ollama](https://ollama.com/)
-- [DFlash](https://github.com/z-lab/dflash)
-- [Activiti](https://www.activiti.org/)
-- [Flowable](https://www.flowable.com/)
-- [Docker](https://www.docker.com/)
-
-## Contact
-
-For questions or suggestions, please open an issue in the repository.
-
-***
-
-**Happy coding!** 🚀
+本仓库代码和示例请按实际项目需要自行评估使用方式；如子项目内有单独 License 或说明，以子项目为准。

@@ -3,32 +3,39 @@ package com.syn.data.service;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
-import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syn.data.entity.DataSourceConfig;
 import com.syn.data.entity.SyncTaskConfig;
 import com.syn.data.mapper.DataSourceConfigMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
 import java.io.IOException;
+import java.io.StringReader;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 数据同步服务
@@ -41,6 +48,9 @@ public class DataSyncService {
     @Resource
     private DataSourceConfigMapper dataSourceConfigMapper;
 
+    @Resource
+    private DatabaseConnectionService databaseConnectionService;
+
     @Value("${elasticsearch.hosts:localhost:9200}")
     private String esHosts;
 
@@ -50,8 +60,20 @@ public class DataSyncService {
     @Value("${elasticsearch.password:}")
     private String esPassword;
 
+    @Value("${elasticsearch.connection-timeout:30000}")
+    private int esConnectionTimeout;
+
+    @Value("${elasticsearch.socket-timeout:60000}")
+    private int esSocketTimeout;
+
+    @Value("${database.pool.size:10}")
+    private int databasePoolSize;
+
     private ElasticsearchClient esClient;
+    private RestClient esRestClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(5);
+    private final Map<String, HikariDataSource> dataSourcePool = new ConcurrentHashMap<>();
 
     /**
      * 初始化Elasticsearch客户端
@@ -59,8 +81,8 @@ public class DataSyncService {
     @PostConstruct
     public void init() {
         try {
-            RestClient restClient = createRestClient();
-            ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+            esRestClient = createRestClient();
+            ElasticsearchTransport transport = new RestClientTransport(esRestClient, new JacksonJsonpMapper());
             esClient = new ElasticsearchClient(transport);
             log.info("Elasticsearch客户端初始化成功");
         } catch (Exception e) {
@@ -69,18 +91,39 @@ public class DataSyncService {
     }
 
     /**
-     * 销毁Elasticsearch客户端
+     * 销毁资源
      */
     @PreDestroy
     public void destroy() {
-        if (esClient != null) {
+        // 关闭Elasticsearch客户端
+        if (esRestClient != null) {
             try {
-                esClient.close();
+                esRestClient.close();
                 log.info("Elasticsearch客户端已关闭");
             } catch (IOException e) {
                 log.error("关闭Elasticsearch客户端失败", e);
             }
         }
+        
+        // 关闭线程池
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        // 关闭数据源连接池
+        dataSourcePool.values().forEach(dataSource -> {
+            try {
+                dataSource.close();
+            } catch (Exception e) {
+                log.error("关闭数据源失败", e);
+            }
+        });
     }
 
     /**
@@ -101,16 +144,30 @@ public class DataSyncService {
             }
         }
 
-        RestClient.Builder builder = RestClient.builder(httpHosts);
+        RestClientBuilder builder = RestClient.builder(httpHosts);
 
-        // 配置认证
-        if (esUsername != null && !esUsername.isEmpty()) {
-            final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-            credentialsProvider.setCredentials(AuthScope.ANY,
-                    new UsernamePasswordCredentials(esUsername, esPassword));
-            builder.setHttpClientConfigCallback(httpClientBuilder ->
-                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
-        }
+        // 配置连接超时
+        builder.setRequestConfigCallback(requestConfigBuilder -> {
+            return requestConfigBuilder
+                    .setConnectTimeout(esConnectionTimeout)
+                    .setSocketTimeout(esSocketTimeout);
+        });
+
+        // 配置连接池
+        builder.setHttpClientConfigCallback((HttpAsyncClientBuilder httpClientBuilder) -> {
+            httpClientBuilder.setMaxConnTotal(100);
+            httpClientBuilder.setMaxConnPerRoute(10);
+            
+            // 配置认证
+            if (esUsername != null && !esUsername.isEmpty()) {
+                final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(AuthScope.ANY,
+                        new UsernamePasswordCredentials(esUsername, esPassword));
+                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            }
+            
+            return httpClientBuilder;
+        });
 
         return builder.build();
     }
@@ -126,46 +183,30 @@ public class DataSyncService {
         SyncResult result = new SyncResult();
         result.setStartTime(System.currentTimeMillis());
 
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-
         try {
-            // 1. 获取数据源配置
-            DataSourceConfig dataSource = dataSourceConfigMapper.selectById(task.getSourceId());
-            if (dataSource == null) {
-                throw new RuntimeException("数据源不存在");
-            }
-
-            // 2. 建立数据库连接
-            conn = getConnection(dataSource);
-
-            // 3. 执行SQL查询
-            String sql = task.getSql_();
-            stmt = conn.prepareStatement(sql);
-            rs = stmt.executeQuery();
-
-            // 4. 获取结果集元数据
-            ResultSetMetaData metaData = rs.getMetaData();
-            int columnCount = metaData.getColumnCount();
-
-            // 5. 解析字段映射
+            DataSourceConfig dataSource = requireDataSource(task.getSourceId());
             Map<String, String> fieldMapping = parseFieldMapping(task.getFieldMapping());
-
-            // 6. 创建ES索引（如果不存在）
             createIndexIfNotExists(task.getTargetIndex(), fieldMapping);
 
-            // 7. 批量写入ES
+            try (Connection conn = getConnection(dataSource);
+                 PreparedStatement stmt = prepareQueryStatement(conn, task.getSql_(), task.getBatchSize(), task.getQueryTimeout(), null);
+                 ResultSet rs = stmt.executeQuery()) {
+
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
             int batchSize = task.getBatchSize() != null ? task.getBatchSize() : 1000;
             int totalCount = 0;
-            List<Map<String, Object>> batch = new ArrayList<>();
+            List<Map<String, Object>> batch = new ArrayList<>(batchSize);
 
             while (rs.next()) {
                 Map<String, Object> document = new HashMap<>();
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnLabel(i);
                     Object value = rs.getObject(i);
-                    document.put(columnName, value);
+                    // 处理NULL值
+                    if (value != null) {
+                        document.put(columnName, value);
+                    }
                 }
                 batch.add(document);
 
@@ -186,13 +227,13 @@ public class DataSyncService {
             result.setSuccess(true);
             result.setTotalCount(totalCount);
             result.setMessage("全量同步成功，共处理 " + totalCount + " 条数据");
+            }
 
         } catch (Exception e) {
             log.error("全量同步失败", e);
             result.setSuccess(false);
             result.setMessage("全量同步失败: " + e.getMessage());
         } finally {
-            closeResources(rs, stmt, conn);
             result.setEndTime(System.currentTimeMillis());
         }
 
@@ -212,40 +253,29 @@ public class DataSyncService {
         SyncResult result = new SyncResult();
         result.setStartTime(System.currentTimeMillis());
 
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-
         try {
-            // 1. 获取数据源配置
-            DataSourceConfig dataSource = dataSourceConfigMapper.selectById(task.getSourceId());
-            if (dataSource == null) {
-                throw new RuntimeException("数据源不存在");
-            }
+            DataSourceConfig dataSource = requireDataSource(task.getSourceId());
+            String sql = buildIncrementalSql(task.getSql_(), task.getIncrementalField());
 
-            // 2. 建立数据库连接
-            conn = getConnection(dataSource);
+            try (Connection conn = getConnection(dataSource);
+                 PreparedStatement stmt = prepareQueryStatement(conn, sql, task.getBatchSize(), task.getQueryTimeout(), lastSyncTime);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            // 3. 构建增量SQL
-            String sql = buildIncrementalSql(task.getSql_(), task.getIncrementalField(), lastSyncTime);
-            stmt = conn.prepareStatement(sql);
-            rs = stmt.executeQuery();
-
-            // 4. 获取结果集元数据
             ResultSetMetaData metaData = rs.getMetaData();
             int columnCount = metaData.getColumnCount();
-
-            // 5. 批量写入ES
             int batchSize = task.getBatchSize() != null ? task.getBatchSize() : 1000;
             int totalCount = 0;
-            List<Map<String, Object>> batch = new ArrayList<>();
+            List<Map<String, Object>> batch = new ArrayList<>(batchSize);
 
             while (rs.next()) {
                 Map<String, Object> document = new HashMap<>();
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnLabel(i);
                     Object value = rs.getObject(i);
-                    document.put(columnName, value);
+                    // 处理NULL值
+                    if (value != null) {
+                        document.put(columnName, value);
+                    }
                 }
                 batch.add(document);
 
@@ -265,13 +295,13 @@ public class DataSyncService {
             result.setSuccess(true);
             result.setTotalCount(totalCount);
             result.setMessage("增量同步成功，共处理 " + totalCount + " 条数据");
+            }
 
         } catch (Exception e) {
             log.error("增量同步失败", e);
             result.setSuccess(false);
             result.setMessage("增量同步失败: " + e.getMessage());
         } finally {
-            closeResources(rs, stmt, conn);
             result.setEndTime(System.currentTimeMillis());
         }
 
@@ -279,30 +309,80 @@ public class DataSyncService {
     }
 
     /**
-     * 获取数据库连接
+     * 执行并行同步（多线程）
+     *
+     * @param tasks 同步任务配置列表
+     * @return 同步结果列表
      */
-    private Connection getConnection(DataSourceConfig dataSource) throws SQLException {
-        String url = buildJdbcUrl(dataSource);
-        return DriverManager.getConnection(url, dataSource.getUsername(), dataSource.getPassword());
+    public List<SyncResult> executeParallelSync(List<SyncTaskConfig> tasks) {
+        List<SyncResult> results = new ArrayList<>(tasks.size());
+        List<CompletableFuture<SyncResult>> futures = new ArrayList<>(tasks.size());
+
+        for (SyncTaskConfig task : tasks) {
+            CompletableFuture<SyncResult> future = CompletableFuture.supplyAsync(() -> {
+                return executeFullSync(task);
+            }, executorService);
+            futures.add(future);
+        }
+
+        // 等待所有任务完成
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+        );
+
+        try {
+            allOf.get();
+            // 收集结果
+            for (CompletableFuture<SyncResult> future : futures) {
+                results.add(future.get());
+            }
+        } catch (Exception e) {
+            log.error("并行同步失败", e);
+        }
+
+        return results;
     }
 
     /**
-     * 构建JDBC URL
+     * 获取数据库连接
      */
-    private String buildJdbcUrl(DataSourceConfig dataSource) {
-        String type = dataSource.getType();
-        String host = dataSource.getHost();
-        int port = dataSource.getPort();
-        String database = dataSource.getDatabaseName();
+    private Connection getConnection(DataSourceConfig dataSource) throws SQLException {
+        String key = dataSource.getType() + "_" + dataSource.getHost() + "_" + dataSource.getPort() + "_" + dataSource.getDatabaseName();
+        HikariDataSource ds = dataSourcePool.computeIfAbsent(key, k -> createDataSource(dataSource));
+        return ds.getConnection();
+    }
 
-        if ("mysql".equalsIgnoreCase(type)) {
-            return String.format("jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai",
-                    host, port, database);
-        } else if ("postgresql".equalsIgnoreCase(type)) {
-            return String.format("jdbc:postgresql://%s:%d/%s",
-                    host, port, database);
+    /**
+     * 创建数据源
+     */
+    private HikariDataSource createDataSource(DataSourceConfig dataSource) {
+        try {
+            String url = databaseConnectionService.buildJdbcUrl(dataSource);
+            String driverClass = databaseConnectionService.resolveDriverClassName(dataSource.getType());
+            int maxPoolSize = Optional.ofNullable(dataSource.getMaxConnections())
+                    .filter(value -> value > 0)
+                    .orElse(databasePoolSize);
+            int minIdle = Optional.ofNullable(dataSource.getMinConnections())
+                    .filter(value -> value >= 0)
+                    .orElse(Math.min(5, maxPoolSize));
+            int timeoutMs = normalizeTimeoutMs(dataSource.getConnectionTimeout(), 30000);
+
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(url);
+            config.setUsername(dataSource.getUsername());
+            config.setPassword(dataSource.getPassword());
+            config.setDriverClassName(driverClass);
+            config.setMaximumPoolSize(maxPoolSize);
+            config.setMinimumIdle(Math.min(minIdle, maxPoolSize));
+            config.setIdleTimeout(30000);
+            config.setMaxLifetime(1800000);
+            config.setConnectionTimeout(timeoutMs);
+
+            return new HikariDataSource(config);
+        } catch (Exception e) {
+            log.error("创建数据源失败", e);
+            throw new RuntimeException("创建数据源失败", e);
         }
-        throw new RuntimeException("不支持的数据库类型: " + type);
     }
 
     /**
@@ -326,16 +406,38 @@ public class DataSyncService {
     private void createIndexIfNotExists(String indexName, Map<String, String> fieldMapping) throws IOException {
         boolean exists = esClient.indices().exists(e -> e.index(indexName)).value();
         if (!exists) {
+            // 创建索引
             CreateIndexRequest.Builder builder = new CreateIndexRequest.Builder()
-                    .index(indexName);
-
-            // 添加字段映射
-            if (!fieldMapping.isEmpty()) {
-                // 这里可以添加更复杂的mapping配置
-            }
+                    .index(indexName)
+                    .settings(s -> s
+                            .numberOfShards("3")
+                            .numberOfReplicas("1")
+                    );
 
             esClient.indices().create(builder.build());
             log.info("创建ES索引: {}", indexName);
+
+            // 添加字段映射
+            if (!fieldMapping.isEmpty()) {
+                Map<String, Object> properties = new HashMap<>();
+                for (Map.Entry<String, String> entry : fieldMapping.entrySet()) {
+                    Map<String, Object> fieldProps = new HashMap<>();
+                    fieldProps.put("type", entry.getValue());
+                    properties.put(entry.getKey(), fieldProps);
+                }
+
+                Map<String, Object> mapping = new HashMap<>();
+                mapping.put("properties", properties);
+                String mappingJson = objectMapper.writeValueAsString(mapping);
+
+                PutMappingRequest putMappingRequest = PutMappingRequest.of(p -> p
+                        .index(indexName)
+                        .withJson(new StringReader(mappingJson))
+                );
+
+                esClient.indices().putMapping(putMappingRequest);
+                log.info("添加ES字段映射: {}", indexName);
+            }
         }
     }
 
@@ -343,27 +445,79 @@ public class DataSyncService {
      * 批量索引文档
      */
     private void bulkIndexDocuments(String indexName, List<Map<String, Object>> documents) throws IOException {
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
-
-        for (Map<String, Object> doc : documents) {
-            String docId = generateDocId(doc);
-            bulkBuilder.operations(op -> op
-                    .index(idx -> idx
-                            .index(indexName)
-                            .id(docId)
-                            .document(doc)
-                    )
-            );
+        if (documents.isEmpty()) {
+            return;
         }
 
-        BulkResponse response = esClient.bulk(bulkBuilder.build());
-        if (response.errors()) {
-            log.error("批量索引文档失败，存在错误");
-            response.items().forEach(item -> {
-                if (item.error() != null) {
-                    log.error("索引失败: {}", item.error().reason());
+        int retries = 3;
+        int delay = 1000;
+        
+        while (retries > 0) {
+            try {
+                BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+
+                for (Map<String, Object> doc : documents) {
+                    String docId = generateDocId(doc);
+                    bulkBuilder.operations(op -> op
+                            .index(idx -> idx
+                                    .index(indexName)
+                                    .id(docId)
+                                    .document(doc)
+                            )
+                    );
                 }
-            });
+
+                BulkResponse response = esClient.bulk(bulkBuilder.build());
+                if (response.errors()) {
+                    int errorCount = 0;
+                    StringBuilder errorMessages = new StringBuilder();
+                    
+                    for (BulkResponseItem item : response.items()) {
+                        if (item.error() != null) {
+                            errorCount++;
+                            errorMessages.append(item.error().reason()).append("\n");
+                        }
+                    }
+                    
+                    log.error("批量索引文档失败，{}个文档出错: {}", errorCount, errorMessages.toString());
+                    
+                    // 如果是临时错误，重试
+                    if (retries > 1) {
+                        log.warn("重试批量索引，剩余次数: {}", retries - 1);
+                        try {
+                            Thread.sleep(delay);
+                        } catch (InterruptedException interruptedException) {
+                            Thread.currentThread().interrupt();
+                            throw new IOException("批量索引重试被中断", interruptedException);
+                        }
+                        delay *= 2; // 指数退避
+                        retries--;
+                        continue;
+                    }
+                }
+                
+                // 成功或达到最大重试次数
+                break;
+                
+            } catch (Exception e) {
+                log.error("批量索引文档异常", e);
+                if (retries > 1) {
+                    log.warn("重试批量索引，剩余次数: {}", retries - 1);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    delay *= 2; // 指数退避
+                    retries--;
+                } else {
+                    if (e instanceof IOException ioException) {
+                        throw ioException;
+                    }
+                    throw new IOException("批量索引失败", e);
+                }
+            }
         }
     }
 
@@ -375,32 +529,63 @@ public class DataSyncService {
         if (doc.containsKey("id")) {
             return String.valueOf(doc.get("id"));
         }
+        // 尝试使用其他唯一字段
+        for (String field : Arrays.asList("uuid", "guid", "code", "key", "identifier")) {
+            if (doc.containsKey(field)) {
+                return String.valueOf(doc.get(field));
+            }
+        }
+        // 最后使用UUID
         return UUID.randomUUID().toString();
     }
 
     /**
      * 构建增量SQL
      */
-    private String buildIncrementalSql(String baseSql, String incrementalField, String lastSyncTime) {
-        // 简单的增量SQL构建，实际项目中可能需要更复杂的逻辑
-        if (baseSql.toLowerCase().contains("where")) {
-            return baseSql + " AND " + incrementalField + " > '" + lastSyncTime + "'";
+    private String buildIncrementalSql(String baseSql, String incrementalField) {
+        String normalizedSql = baseSql.trim();
+        if (normalizedSql.toLowerCase().endsWith(";")) {
+            normalizedSql = normalizedSql.substring(0, normalizedSql.length() - 1);
+        }
+
+        if (normalizedSql.toLowerCase().contains("where")) {
+            return normalizedSql + " AND " + incrementalField + " > ?";
         } else {
-            return baseSql + " WHERE " + incrementalField + " > '" + lastSyncTime + "'";
+            return normalizedSql + " WHERE " + incrementalField + " > ?";
         }
     }
 
-    /**
-     * 关闭资源
-     */
-    private void closeResources(ResultSet rs, Statement stmt, Connection conn) {
-        try {
-            if (rs != null) rs.close();
-            if (stmt != null) stmt.close();
-            if (conn != null) conn.close();
-        } catch (SQLException e) {
-            log.error("关闭数据库资源失败", e);
+    private DataSourceConfig requireDataSource(Long sourceId) {
+        DataSourceConfig dataSource = dataSourceConfigMapper.selectById(sourceId);
+        if (dataSource == null) {
+            throw new RuntimeException("数据源不存在");
         }
+        return dataSource;
+    }
+
+    private PreparedStatement prepareQueryStatement(
+            Connection conn,
+            String sql,
+            Integer batchSize,
+            Integer queryTimeout,
+            String incrementalValue
+    ) throws SQLException {
+        PreparedStatement stmt = conn.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        stmt.setFetchSize(batchSize != null && batchSize > 0 ? batchSize : 1000);
+        if (queryTimeout != null && queryTimeout > 0) {
+            stmt.setQueryTimeout(queryTimeout);
+        }
+        if (incrementalValue != null) {
+            stmt.setString(1, incrementalValue);
+        }
+        return stmt;
+    }
+
+    private int normalizeTimeoutMs(Integer value, int defaultValue) {
+        if (value == null || value <= 0) {
+            return defaultValue;
+        }
+        return value < 1000 ? value * 1000 : value;
     }
 
     /**
@@ -455,6 +640,16 @@ public class DataSyncService {
 
         public long getDuration() {
             return endTime - startTime;
+        }
+
+        @Override
+        public String toString() {
+            return "SyncResult{" +
+                    "success=" + success +
+                    ", totalCount=" + totalCount +
+                    ", message='" + message + '\'' +
+                    ", duration=" + getDuration() + "ms" +
+                    '}';
         }
     }
 }

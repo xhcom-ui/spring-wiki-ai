@@ -2,15 +2,10 @@ package com.example.flowlong.entity;
 
 import lombok.Data;
 
-import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Data
-@Entity
-@Table(name = "sys_menu")
 public class Menu {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
     private String path;

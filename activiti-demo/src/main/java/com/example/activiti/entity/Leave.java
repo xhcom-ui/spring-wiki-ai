@@ -2,16 +2,12 @@ package com.example.activiti.entity;
 
 import lombok.Data;
 
-import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Data
-@Entity
-@Table(name = "leave_application")
 public class Leave {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private String processKey;
     private String processInstanceId;
     private String applicant;
     private String deptManager;

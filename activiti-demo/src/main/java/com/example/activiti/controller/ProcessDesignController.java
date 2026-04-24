@@ -1,5 +1,7 @@
 package com.example.activiti.controller;
 
+import com.example.activiti.service.PermissionService;
+import com.example.activiti.service.TaskPageCatalogService;
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.ProcessDefinition;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,80 +23,78 @@ public class ProcessDesignController {
     @Autowired
     private RepositoryService repositoryService;
 
-    // Save process definition
+    @Autowired
+    private PermissionService permissionService;
+
+    @Autowired
+    private TaskPageCatalogService taskPageCatalogService;
+
     @PostMapping("/save")
     public ResponseEntity<Map<String, String>> saveProcessDefinition(@RequestParam("file") MultipartFile file) {
-        try {
-            Deployment deployment = repositoryService.createDeployment()
-                    .addInputStream(file.getOriginalFilename(), file.getInputStream())
-                    .name(file.getOriginalFilename())
-                    .deploy();
-            return ResponseEntity.ok(Map.of("message", "流程保存成功", "deploymentId", deployment.getId()));
-        } catch (IOException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "保存流程失败: " + e.getMessage()));
-        }
+        permissionService.requirePermission("process:design");
+        Deployment deployment = repositoryService.createDeployment()
+                .addInputStream(file.getOriginalFilename(), openInputStream(file))
+                .name(file.getOriginalFilename())
+                .deploy();
+        return ResponseEntity.ok(Map.of("message", "流程保存成功", "deploymentId", deployment.getId()));
     }
 
-    // Get process definition by ID
     @GetMapping("/definition/{processDefinitionId}")
     public ResponseEntity<Map<String, Object>> getProcessDefinition(@PathVariable String processDefinitionId) {
-        try {
-            ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
-                    .processDefinitionId(processDefinitionId)
-                    .singleResult();
-            if (processDefinition == null) {
-                return ResponseEntity.notFound().build();
-            }
-            Map<String, Object> result = new HashMap<>();
-            result.put("id", processDefinition.getId());
-            result.put("key", processDefinition.getKey());
-            result.put("name", processDefinition.getName());
-            result.put("version", processDefinition.getVersion());
-            result.put("deploymentId", processDefinition.getDeploymentId());
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "获取流程定义失败: " + e.getMessage()));
+        permissionService.requirePermission("process:design");
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionId(processDefinitionId)
+                .singleResult();
+        if (processDefinition == null) {
+            return ResponseEntity.notFound().build();
         }
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", processDefinition.getId());
+        result.put("key", processDefinition.getKey());
+        result.put("name", processDefinition.getName());
+        result.put("version", processDefinition.getVersion());
+        result.put("deploymentId", processDefinition.getDeploymentId());
+        return ResponseEntity.ok(result);
     }
 
-    // Update process definition
     @PutMapping("/update/{deploymentId}")
     public ResponseEntity<Map<String, String>> updateProcessDefinition(@PathVariable String deploymentId, @RequestParam("file") MultipartFile file) {
-        try {
-            // First delete the existing deployment
-            repositoryService.deleteDeployment(deploymentId, true);
-            // Then deploy the new version
-            Deployment deployment = repositoryService.createDeployment()
-                    .addInputStream(file.getOriginalFilename(), file.getInputStream())
-                    .name(file.getOriginalFilename())
-                    .deploy();
-            return ResponseEntity.ok(Map.of("message", "流程更新成功", "deploymentId", deployment.getId()));
-        } catch (IOException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "更新流程失败: " + e.getMessage()));
-        }
+        permissionService.requirePermission("process:design");
+        repositoryService.deleteDeployment(deploymentId, true);
+        Deployment deployment = repositoryService.createDeployment()
+                .addInputStream(file.getOriginalFilename(), openInputStream(file))
+                .name(file.getOriginalFilename())
+                .deploy();
+        return ResponseEntity.ok(Map.of("message", "流程更新成功", "deploymentId", deployment.getId()));
     }
 
-    // Delete process definition
     @DeleteMapping("/definition/{deploymentId}")
     public ResponseEntity<Map<String, String>> deleteProcessDefinition(@PathVariable String deploymentId) {
-        try {
-            repositoryService.deleteDeployment(deploymentId, true);
-            return ResponseEntity.ok(Map.of("message", "流程定义删除成功"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "删除流程定义失败: " + e.getMessage()));
-        }
+        permissionService.requirePermission("process:design");
+        repositoryService.deleteDeployment(deploymentId, true);
+        return ResponseEntity.ok(Map.of("message", "流程定义删除成功"));
     }
 
-    // Get all process definitions
     @GetMapping("/definitions")
     public ResponseEntity<List<ProcessDefinition>> getProcessDefinitions() {
+        permissionService.requirePermission("process:design");
+        List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery()
+                .latestVersion()
+                .list();
+        return ResponseEntity.ok(definitions);
+    }
+
+    @GetMapping("/runtime-catalog")
+    public ResponseEntity<Map<String, Object>> getRuntimeCatalog() {
+        permissionService.requireLogin();
+        return ResponseEntity.ok(taskPageCatalogService.getCatalog());
+    }
+
+    private InputStream openInputStream(MultipartFile file) {
         try {
-            List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery()
-                    .latestVersion()
-                    .list();
-            return ResponseEntity.ok(definitions);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
+            return file.getInputStream();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("读取流程文件失败: " + e.getMessage(), e);
         }
     }
 }

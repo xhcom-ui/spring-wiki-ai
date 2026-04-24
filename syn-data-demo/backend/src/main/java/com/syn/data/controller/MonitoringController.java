@@ -1,10 +1,12 @@
 package com.syn.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.syn.data.service.MonitoringService;
 import com.syn.data.service.AlertService;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.Map;
 import java.util.List;
 
@@ -13,6 +15,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/monitoring")
+@SaCheckLogin
 public class MonitoringController {
 
     @Resource
@@ -46,9 +49,23 @@ public class MonitoringController {
     }
 
     /**
+     * 获取任务执行日志列表
+     */
+    @GetMapping("/task/logs")
+    public Map<String, Object> getTaskLogs(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long taskId,
+            @RequestParam(required = false) String status
+    ) {
+        return monitoringService.getTaskLogs(page, size, taskId, status);
+    }
+
+    /**
      * 导出监控数据
      */
     @PostMapping("/export")
+    @SaCheckRole("admin")
     public Map<String, Object> exportData(@RequestParam String timeRange, @RequestParam String format) {
         return monitoringService.exportMonitoringData(timeRange, format);
     }
@@ -73,6 +90,7 @@ public class MonitoringController {
      * 创建告警规则
      */
     @PostMapping("/alerts/rules")
+    @SaCheckRole("admin")
     public AlertService.AlertRule createAlertRule(@RequestBody AlertService.AlertRule rule) {
         return alertService.createAlertRule(rule);
     }
@@ -81,6 +99,7 @@ public class MonitoringController {
      * 更新告警规则
      */
     @PutMapping("/alerts/rules")
+    @SaCheckRole("admin")
     public AlertService.AlertRule updateAlertRule(@RequestBody AlertService.AlertRule rule) {
         return alertService.updateAlertRule(rule);
     }
@@ -89,6 +108,7 @@ public class MonitoringController {
      * 删除告警规则
      */
     @DeleteMapping("/alerts/rules/{id}")
+    @SaCheckRole("admin")
     public boolean deleteAlertRule(@PathVariable Long id) {
         return alertService.deleteAlertRule(id);
     }
@@ -97,6 +117,7 @@ public class MonitoringController {
      * 启用/禁用告警规则
      */
     @PostMapping("/alerts/rules/{id}/toggle")
+    @SaCheckRole("admin")
     public boolean toggleAlertRule(@PathVariable Long id, @RequestParam boolean enabled) {
         return alertService.toggleAlertRule(id, enabled);
     }
@@ -115,6 +136,7 @@ public class MonitoringController {
      * 触发告警
      */
     @PostMapping("/alerts/trigger")
+    @SaCheckRole("admin")
     public AlertService.AlertRecord triggerAlert(
             @RequestParam String type,
             @RequestParam String severity,
@@ -127,6 +149,7 @@ public class MonitoringController {
      * 解决告警
      */
     @PostMapping("/alerts/resolve/{id}")
+    @SaCheckRole("admin")
     public boolean resolveAlert(@PathVariable Long id) {
         return alertService.resolveAlert(id);
     }
@@ -143,6 +166,7 @@ public class MonitoringController {
      * 测试告警通知
      */
     @PostMapping("/alerts/test-notification")
+    @SaCheckRole("admin")
     public Map<String, Object> testAlertNotification(
             @RequestParam String method,
             @RequestParam List<String> recipients) {

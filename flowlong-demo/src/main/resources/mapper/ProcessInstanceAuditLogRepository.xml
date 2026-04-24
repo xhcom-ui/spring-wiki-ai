@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowlong.repository.ProcessInstanceAuditLogRepository">
+
+    <resultMap id="ProcessInstanceAuditLogResultMap" type="com.example.flowlong.entity.ProcessInstanceAuditLog">
+        <id property="id" column="id"/>
+        <result property="processKey" column="process_key"/>
+        <result property="processInstanceId" column="process_instance_id"/>
+        <result property="businessKey" column="business_key"/>
+        <result property="taskId" column="task_id"/>
+        <result property="taskKey" column="task_key"/>
+        <result property="taskName" column="task_name"/>
+        <result property="nodeLabel" column="node_label"/>
+        <result property="pageLabel" column="page_label"/>
+        <result property="formKey" column="form_key"/>
+        <result property="formLabel" column="form_label"/>
+        <result property="actionType" column="action_type"/>
+        <result property="comment" column="comment"/>
+        <result property="approvalComment" column="approval_comment"/>
+        <result property="rejectReason" column="reject_reason"/>
+        <result property="systemRemark" column="system_remark"/>
+        <result property="variableSnapshotJson" column="variable_snapshot_json"/>
+        <result property="formSnapshotJson" column="form_snapshot_json"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <sql id="AuditLogColumns">
+        id, process_key, process_instance_id, business_key, task_id, task_key, task_name, node_label,
+        page_label, form_key, form_label, action_type, comment, approval_comment, reject_reason, system_remark,
+        variable_snapshot_json, form_snapshot_json,
+        operator_id, operator_name, created_at
+    </sql>
+
+    <select id="selectById" resultMap="ProcessInstanceAuditLogResultMap">
+        select <include refid="AuditLogColumns"/>
+        from process_instance_audit_log
+        where id = #{id}
+    </select>
+
+    <select id="findByProcessInstanceIdOrderByCreatedAtAscIdAsc" resultMap="ProcessInstanceAuditLogResultMap">
+        select <include refid="AuditLogColumns"/>
+        from process_instance_audit_log
+        where process_instance_id = #{processInstanceId}
+        order by created_at asc, id asc
+    </select>
+
+    <insert id="insert" parameterType="com.example.flowlong.entity.ProcessInstanceAuditLog" useGeneratedKeys="true" keyProperty="id">
+        insert into process_instance_audit_log (
+            process_key, process_instance_id, business_key, task_id, task_key, task_name, node_label,
+            page_label, form_key, form_label, action_type, comment, approval_comment, reject_reason, system_remark,
+            variable_snapshot_json, form_snapshot_json,
+            operator_id, operator_name, created_at
+        ) values (
+            #{processKey}, #{processInstanceId}, #{businessKey}, #{taskId}, #{taskKey}, #{taskName}, #{nodeLabel},
+            #{pageLabel}, #{formKey}, #{formLabel}, #{actionType}, #{comment}, #{approvalComment}, #{rejectReason}, #{systemRemark},
+            #{variableSnapshotJson}, #{formSnapshotJson},
+            #{operatorId}, #{operatorName}, #{createdAt}
+        )
+    </insert>
+</mapper>

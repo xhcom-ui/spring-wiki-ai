@@ -1,9 +1,10 @@
 package com.syn.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.syn.data.service.DataQualityService;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.Map;
 import java.util.List;
 
@@ -12,6 +13,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/data-quality")
+@SaCheckLogin
 public class DataQualityController {
 
     @Resource

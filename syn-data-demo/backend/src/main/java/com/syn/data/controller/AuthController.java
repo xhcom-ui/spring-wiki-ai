@@ -1,11 +1,12 @@
 package com.syn.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.stp.StpUtil;
 import com.syn.data.entity.User;
 import com.syn.data.service.UserService;
-import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.Map;
 
 /**
@@ -29,12 +30,9 @@ public class AuthController {
     /**
      * 获取当前用户信息
      */
+    @SaCheckLogin
     @GetMapping("/user")
     public User getUserInfo() {
-        // 验证token
-        StpUtil.checkLogin();
-
-        // 获取当前用户信息
         return userService.getCurrentUser();
     }
 
@@ -49,8 +47,14 @@ public class AuthController {
     /**
      * 重置密码
      */
+    @SaCheckLogin
     @PostMapping("/reset-password")
     public void resetPassword(@RequestBody ResetPasswordRequest request) {
+        Long currentUserId = StpUtil.getLoginIdAsLong();
+        boolean admin = StpUtil.hasRole("admin");
+        if (!admin && !currentUserId.equals(request.getUserId())) {
+            throw new RuntimeException("只能重置当前登录用户自己的密码");
+        }
         userService.resetPassword(request.getUserId(), request.getNewPassword());
     }
 

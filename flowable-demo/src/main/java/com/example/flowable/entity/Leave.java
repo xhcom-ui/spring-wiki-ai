@@ -2,15 +2,12 @@ package com.example.flowable.entity;
 
 import lombok.Data;
 
-import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Data
-@Entity
-@Table(name = "leave_application")
 public class Leave {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String processInstanceId;
     private String businessKey;
@@ -24,4 +21,9 @@ public class Leave {
     private String reason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Map<String, Object> processVariables;
+    private List<String> visitedNodeLabels;
+    private List<String> currentNodeLabels;
+    private List<String> visitedFormLabels;
+    private List<String> visitedPageLabels;
 }

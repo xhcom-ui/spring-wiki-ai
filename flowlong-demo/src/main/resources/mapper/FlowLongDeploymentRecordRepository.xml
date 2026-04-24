@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowlong.repository.FlowLongDeploymentRecordRepository">
+
+    <resultMap id="FlowLongDeploymentRecordResultMap" type="com.example.flowlong.entity.FlowLongDeploymentRecord">
+        <id property="id" column="id"/>
+        <result property="processKey" column="process_key"/>
+        <result property="processName" column="process_name"/>
+        <result property="flowLongProcessId" column="flow_long_process_id"/>
+        <result property="flowLongProcessVersion" column="flow_long_process_version"/>
+        <result property="sourceDefinitionId" column="source_definition_id"/>
+        <result property="sourceDefinitionVersion" column="source_definition_version"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="deployedBy" column="deployed_by"/>
+        <result property="deployedByName" column="deployed_by_name"/>
+        <result property="deployedAt" column="deployed_at"/>
+    </resultMap>
+
+    <sql id="FlowLongDeploymentRecordColumns">id, process_key, process_name, flow_long_process_id, flow_long_process_version, source_definition_id, source_definition_version, source_type, deployed_by, deployed_by_name, deployed_at</sql>
+
+    <select id="selectById" resultMap="FlowLongDeploymentRecordResultMap">
+        select <include refid="FlowLongDeploymentRecordColumns"/>
+        from flowlong_deployment_record
+        where id = #{id}
+    </select>
+
+    <select id="findByProcessKeyOrderByDeployedAtDescIdDesc" resultMap="FlowLongDeploymentRecordResultMap">
+        select <include refid="FlowLongDeploymentRecordColumns"/>
+        from flowlong_deployment_record
+        where process_key = #{processKey}
+        order by deployed_at desc nulls last, id desc
+    </select>
+
+    <select id="findFirstByProcessKeyAndFlowLongProcessVersionOrderByDeployedAtDescIdDesc" resultMap="FlowLongDeploymentRecordResultMap">
+        select <include refid="FlowLongDeploymentRecordColumns"/>
+        from flowlong_deployment_record
+        where process_key = #{processKey}
+          and flow_long_process_version = #{flowLongProcessVersion}
+        order by deployed_at desc nulls last, id desc
+        limit 1
+    </select>
+
+    <insert id="insert" parameterType="com.example.flowlong.entity.FlowLongDeploymentRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into flowlong_deployment_record (
+            process_key, process_name, flow_long_process_id, flow_long_process_version,
+            source_definition_id, source_definition_version, source_type,
+            deployed_by, deployed_by_name, deployed_at
+        ) values (
+            #{processKey}, #{processName}, #{flowLongProcessId}, #{flowLongProcessVersion},
+            #{sourceDefinitionId}, #{sourceDefinitionVersion}, #{sourceType},
+            #{deployedBy}, #{deployedByName}, #{deployedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.example.flowlong.entity.FlowLongDeploymentRecord">
+        update flowlong_deployment_record
+        set process_key = #{processKey},
+            process_name = #{processName},
+            flow_long_process_id = #{flowLongProcessId},
+            flow_long_process_version = #{flowLongProcessVersion},
+            source_definition_id = #{sourceDefinitionId},
+            source_definition_version = #{sourceDefinitionVersion},
+            source_type = #{sourceType},
+            deployed_by = #{deployedBy},
+            deployed_by_name = #{deployedByName},
+            deployed_at = #{deployedAt}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from flowlong_deployment_record where id = #{id}
+    </delete>
+</mapper>

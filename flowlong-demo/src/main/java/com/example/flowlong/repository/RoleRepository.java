@@ -1,10 +1,54 @@
 package com.example.flowlong.repository;
 
+import com.example.flowlong.controller.dto.RoleQueryRequest;
 import com.example.flowlong.entity.Role;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Param;
 
-@Repository
-public interface RoleRepository extends JpaRepository<Role, Long> {
+import java.util.List;
+import java.util.Optional;
+
+public interface RoleRepository {
+    Role selectById(Long id);
+
     Role findByCode(String code);
+
+    List<Role> findAll();
+
+    List<Role> findAllById(@Param("ids") List<Long> ids);
+
+    List<Role> findPageByCondition(@Param("query") RoleQueryRequest query);
+
+    long countByCondition(@Param("query") RoleQueryRequest query);
+
+    int insert(Role role);
+
+    int update(Role role);
+
+    int removeById(Long id);
+
+    default Optional<Role> findById(Long id) {
+        return Optional.ofNullable(selectById(id));
+    }
+
+    default Role save(Role role) {
+        if (role.getId() == null) {
+            insert(role);
+        } else {
+            update(role);
+        }
+        return role;
+    }
+
+    default List<Role> saveAll(List<Role> roles) {
+        for (Role role : roles) {
+            save(role);
+        }
+        return roles;
+    }
+
+    default void delete(Role role) {
+        if (role != null && role.getId() != null) {
+            removeById(role.getId());
+        }
+    }
 }

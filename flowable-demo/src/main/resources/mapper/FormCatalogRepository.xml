@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowable.repository.FormCatalogRepository">
+
+    <resultMap id="FormCatalogResultMap" type="FormCatalog">
+        <id property="id" column="id"/>
+        <result property="formKey" column="form_key"/>
+        <result property="formName" column="form_name"/>
+        <result property="pageLabel" column="page_label"/>
+        <result property="componentKey" column="component_key"/>
+        <result property="fieldSchemaJson" column="field_schema_json"/>
+        <result property="scope" column="scope"/>
+        <result property="description" column="description"/>
+        <result property="sort" column="sort"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="FormCatalogColumns">
+        id, form_key, form_name, page_label, component_key, field_schema_json, scope, description, sort, status, created_at, updated_at
+    </sql>
+
+    <select id="selectById" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from form_catalog
+        where id = #{id}
+    </select>
+
+    <select id="findByFormKey" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from form_catalog
+        where form_key = #{formKey}
+        limit 1
+    </select>
+
+    <select id="findByStatus" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from form_catalog
+        where status = #{status}
+        order by sort nulls last, id
+    </select>
+
+    <select id="findAll" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from form_catalog
+        order by sort nulls last, id
+    </select>
+
+    <insert id="insert" parameterType="FormCatalog" useGeneratedKeys="true" keyProperty="id">
+        insert into form_catalog (form_key, form_name, page_label, component_key, field_schema_json, scope, description, sort, status, created_at, updated_at)
+        values (#{formKey}, #{formName}, #{pageLabel}, #{componentKey}, #{fieldSchemaJson}, #{scope}, #{description}, #{sort}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="FormCatalog">
+        update form_catalog
+        set form_key = #{formKey},
+            form_name = #{formName},
+            page_label = #{pageLabel},
+            component_key = #{componentKey},
+            field_schema_json = #{fieldSchemaJson},
+            scope = #{scope},
+            description = #{description},
+            sort = #{sort},
+            status = #{status},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from form_catalog where id = #{id}
+    </delete>
+</mapper>

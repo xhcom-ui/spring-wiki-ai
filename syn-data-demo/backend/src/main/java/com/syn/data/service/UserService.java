@@ -3,11 +3,13 @@ package com.syn.data.service;
 import com.syn.data.entity.User;
 import com.syn.data.mapper.UserMapper;
 import cn.dev33.satoken.stp.StpUtil;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
-import java.util.Date;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,8 +35,14 @@ public class UserService {
         if (user.getStatus() != 1) {
             throw new RuntimeException("用户已被禁用");
         }
-        if (!password.equals(user.getPassword())) {
+        if (!matchesPassword(password, user.getPassword())) {
             throw new RuntimeException("密码错误");
+        }
+
+        if (!isHashedPassword(user.getPassword())) {
+            user.setPassword(hashPassword(password));
+            user.setUpdatedAt(LocalDateTime.now());
+            userMapper.updateById(user);
         }
 
         // 生成SO-Token (使用Sa-Token)
@@ -54,7 +62,10 @@ public class UserService {
      */
     public void validateToken(String token) {
         try {
-            StpUtil.checkToken(token);
+            Object loginId = StpUtil.getLoginIdByToken(token);
+            if (loginId == null) {
+                throw new RuntimeException("token未登录");
+            }
         } catch (Exception e) {
             log.error("Token validation failed: {}", e.getMessage());
             throw new RuntimeException("无效的token");
@@ -89,8 +100,10 @@ public class UserService {
         // 设置默认值
         user.setStatus(1);
         user.setRole("user");
-        user.setCreatedAt(new Date());
-        user.setUpdatedAt(new Date());
+        user.setPassword(hashPassword(user.getPassword()));
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
 
         // 保存用户
         userMapper.insert(user);
@@ -101,7 +114,7 @@ public class UserService {
      * 更新用户信息
      */
     public User updateUser(User user) {
-        user.setUpdatedAt(new Date());
+        user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
         return user;
     }
@@ -114,8 +127,33 @@ public class UserService {
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
-        user.setPassword(newPassword);
-        user.setUpdatedAt(new Date());
+        user.setPassword(hashPassword(newPassword));
+        user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
+    }
+
+    private boolean matchesPassword(String rawPassword, String storedPassword) {
+        if (storedPassword == null || storedPassword.isBlank()) {
+            return false;
+        }
+        return storedPassword.equals(rawPassword) || storedPassword.equals(hashPassword(rawPassword));
+    }
+
+    private boolean isHashedPassword(String password) {
+        return password != null && password.matches("^[a-fA-F0-9]{64}$");
+    }
+
+    private String hashPassword(String rawPassword) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(rawPassword.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder();
+            for (byte item : hashed) {
+                builder.append(String.format("%02x", item));
+            }
+            return builder.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("密码加密失败", e);
+        }
     }
 }

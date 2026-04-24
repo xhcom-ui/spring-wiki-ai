@@ -1,5 +1,6 @@
 package com.example.activiti.service;
 
+import com.example.activiti.exception.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.RuntimeService;
@@ -74,7 +75,7 @@ public class ProcessOrchestrationService {
             return processInstance.getId();
         } catch (Exception e) {
             log.error("Error starting process with callback: {}", e.getMessage());
-            throw new RuntimeException("Failed to start process with callback", e);
+            throw new BadRequestException("Failed to start process with callback", e);
         }
     }
 
@@ -86,7 +87,7 @@ public class ProcessOrchestrationService {
             log.info("Signaled process: {} with signal: {}", processInstanceId, signalName);
         } catch (Exception e) {
             log.error("Error signaling process: {}", e.getMessage());
-            throw new RuntimeException("Failed to signal process", e);
+            throw new BadRequestException("Failed to signal process", e);
         }
     }
 }

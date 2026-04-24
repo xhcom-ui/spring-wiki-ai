@@ -2,15 +2,10 @@ package com.example.flowlong.entity;
 
 import lombok.Data;
 
-import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Data
-@Entity
-@Table(name = "leave_application")
 public class Leave {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String processInstanceId;
     private String businessKey;
@@ -22,6 +17,7 @@ public class Leave {
     private LocalDateTime endDate;
     private Integer days;
     private String reason;
+    private String passedNodeLabelsJson;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

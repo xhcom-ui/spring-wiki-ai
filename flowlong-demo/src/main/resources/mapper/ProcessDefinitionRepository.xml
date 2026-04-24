@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowlong.repository.ProcessDefinitionRepository">
+
+    <resultMap id="ProcessDefinitionResultMap" type="com.example.flowlong.entity.ProcessDefinitionEntity">
+        <id property="id" column="id"/>
+        <result property="processKey" column="process_key"/>
+        <result property="processName" column="process_name"/>
+        <result property="bpmnXml" column="bpmn_xml"/>
+        <result property="designerType" column="designer_type"/>
+        <result property="designSchemaJson" column="design_schema_json"/>
+        <result property="version" column="version"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="updatedBy" column="updated_by"/>
+    </resultMap>
+
+    <sql id="ProcessDefinitionColumns">id, process_key, process_name, bpmn_xml, designer_type, design_schema_json, version, status, created_at, updated_at, created_by, updated_by</sql>
+
+    <select id="selectById" resultMap="ProcessDefinitionResultMap">
+        select <include refid="ProcessDefinitionColumns"/>
+        from process_definition
+        where id = #{id}
+    </select>
+
+    <select id="findAllByOrderByUpdatedAtDescIdDesc" resultMap="ProcessDefinitionResultMap">
+        select <include refid="ProcessDefinitionColumns"/>
+        from process_definition
+        order by updated_at desc nulls last, id desc
+    </select>
+
+    <select id="findByProcessKeyOrderByVersionDesc" resultMap="ProcessDefinitionResultMap">
+        select <include refid="ProcessDefinitionColumns"/>
+        from process_definition
+        where process_key = #{processKey}
+        order by version desc, id desc
+    </select>
+
+    <select id="findByProcessKeyAndStatusOrderByVersionDesc" resultMap="ProcessDefinitionResultMap">
+        select <include refid="ProcessDefinitionColumns"/>
+        from process_definition
+        where process_key = #{processKey}
+          and status = #{status}
+        order by version desc, id desc
+    </select>
+
+    <select id="findByStatusOrderByUpdatedAtDesc" resultMap="ProcessDefinitionResultMap">
+        select <include refid="ProcessDefinitionColumns"/>
+        from process_definition
+        where status = #{status}
+        order by updated_at desc nulls last, id desc
+    </select>
+
+    <insert id="insert" parameterType="com.example.flowlong.entity.ProcessDefinitionEntity" useGeneratedKeys="true" keyProperty="id">
+        insert into process_definition (
+            process_key, process_name, bpmn_xml, designer_type, design_schema_json, version, status,
+            created_at, updated_at, created_by, updated_by
+        ) values (
+            #{processKey}, #{processName}, #{bpmnXml}, #{designerType}, #{designSchemaJson}, #{version}, #{status},
+            #{createdAt}, #{updatedAt}, #{createdBy}, #{updatedBy}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.example.flowlong.entity.ProcessDefinitionEntity">
+        update process_definition
+        set process_key = #{processKey},
+            process_name = #{processName},
+            bpmn_xml = #{bpmnXml},
+            designer_type = #{designerType},
+            design_schema_json = #{designSchemaJson},
+            version = #{version},
+            status = #{status},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt},
+            created_by = #{createdBy},
+            updated_by = #{updatedBy}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from process_definition where id = #{id}
+    </delete>
+</mapper>

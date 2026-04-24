@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.activiti.repository.TaskPageCatalogRepository">
+
+    <resultMap id="TaskPageCatalogResultMap" type="TaskPageCatalogItem">
+        <id property="id" column="id"/>
+        <result property="itemKey" column="item_key"/>
+        <result property="label" column="label"/>
+        <result property="itemType" column="item_type"/>
+        <result property="pageMode" column="page_mode"/>
+        <result property="businessKind" column="business_kind"/>
+        <result property="description" column="description"/>
+        <result property="defaultTodoPage" column="default_todo_page"/>
+        <result property="defaultDonePage" column="default_done_page"/>
+        <result property="systemFlag" column="system_flag"/>
+        <result property="sort" column="sort"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="TaskPageCatalogColumns">
+        id, item_key, label, item_type, page_mode, business_kind, description,
+        default_todo_page, default_done_page, system_flag, sort, status, created_at, updated_at
+    </sql>
+
+    <select id="selectById" resultMap="TaskPageCatalogResultMap">
+        select <include refid="TaskPageCatalogColumns"/>
+        from task_page_catalog
+        where id = #{id}
+    </select>
+
+    <select id="findByItemKey" resultMap="TaskPageCatalogResultMap">
+        select <include refid="TaskPageCatalogColumns"/>
+        from task_page_catalog
+        where item_key = #{itemKey}
+    </select>
+
+    <select id="findAll" resultMap="TaskPageCatalogResultMap">
+        select <include refid="TaskPageCatalogColumns"/>
+        from task_page_catalog
+        order by sort nulls last, id
+    </select>
+
+    <select id="findByStatus" resultMap="TaskPageCatalogResultMap">
+        select <include refid="TaskPageCatalogColumns"/>
+        from task_page_catalog
+        where status = #{status}
+        order by sort nulls last, id
+    </select>
+
+    <insert id="insert" parameterType="TaskPageCatalogItem" useGeneratedKeys="true" keyProperty="id">
+        insert into task_page_catalog (
+            item_key, label, item_type, page_mode, business_kind, description,
+            default_todo_page, default_done_page, system_flag, sort, status, created_at, updated_at
+        ) values (
+            #{itemKey}, #{label}, #{itemType}, #{pageMode}, #{businessKind}, #{description},
+            #{defaultTodoPage}, #{defaultDonePage}, #{systemFlag}, #{sort}, #{status}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="TaskPageCatalogItem">
+        update task_page_catalog
+        set item_key = #{itemKey},
+            label = #{label},
+            item_type = #{itemType},
+            page_mode = #{pageMode},
+            business_kind = #{businessKind},
+            description = #{description},
+            default_todo_page = #{defaultTodoPage},
+            default_done_page = #{defaultDonePage},
+            system_flag = #{systemFlag},
+            sort = #{sort},
+            status = #{status},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from task_page_catalog where id = #{id}
+    </delete>
+</mapper>

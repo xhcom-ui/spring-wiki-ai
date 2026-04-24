@@ -1,6 +1,7 @@
 package com.syn.data.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Result;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
@@ -22,8 +23,8 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +48,7 @@ public class ElasticsearchService {
     private String elasticsearchPassword;
 
     private ElasticsearchClient client;
+    private RestClient restClient;
 
     /**
      * 初始化Elasticsearch客户端
@@ -79,7 +81,7 @@ public class ElasticsearchService {
                         httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
             }
 
-            RestClient restClient = builder.build();
+            restClient = builder.build();
             ElasticsearchTransport transport = new RestClientTransport(
                     restClient, new JacksonJsonpMapper());
             client = new ElasticsearchClient(transport);
@@ -97,8 +99,8 @@ public class ElasticsearchService {
     @PreDestroy
     public void destroy() {
         try {
-            if (client != null) {
-                client.close();
+            if (restClient != null) {
+                restClient.close();
                 log.info("Elasticsearch客户端已关闭");
             }
         } catch (IOException e) {
@@ -158,8 +160,8 @@ public class ElasticsearchService {
                     .id(documentId)
                     .document(document)
             );
-            return client.index(request).result() == Result.Created ||
-                   client.index(request).result() == Result.Updated;
+            Result result = client.index(request).result();
+            return result == Result.Created || result == Result.Updated;
         } catch (IOException e) {
             log.error("索引文档失败: {}", indexName, e);
             return false;

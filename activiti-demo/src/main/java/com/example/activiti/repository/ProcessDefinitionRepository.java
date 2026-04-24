@@ -1,24 +1,46 @@
 package com.example.activiti.repository;
 
 import com.example.activiti.entity.ProcessDefinitionEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
-public interface ProcessDefinitionRepository extends JpaRepository<ProcessDefinitionEntity, Long> {
-    
-    // Find process definitions by key
-    List<ProcessDefinitionEntity> findByProcessKey(String processKey);
-    
-    // Find latest version of a process definition by key
-    @Query("SELECT p FROM ProcessDefinitionEntity p WHERE p.processKey = :processKey ORDER BY p.version DESC LIMIT 1")
-    ProcessDefinitionEntity findLatestByProcessKey(@Param("processKey") String processKey);
-    
-    // Find process definitions by status
-    List<ProcessDefinitionEntity> findByStatus(String status);
-    
-    // Find process definition by deployment ID
+public interface ProcessDefinitionRepository {
+    ProcessDefinitionEntity selectById(Long id);
+
+    List<ProcessDefinitionEntity> findAllByOrderByUpdatedAtDescIdDesc();
+
+    List<ProcessDefinitionEntity> findByProcessKeyOrderByVersionDesc(String processKey);
+
+    List<ProcessDefinitionEntity> findByStatusOrderByUpdatedAtDesc(String status);
+
     ProcessDefinitionEntity findByDeploymentId(String deploymentId);
+
+    int insert(ProcessDefinitionEntity entity);
+
+    int update(ProcessDefinitionEntity entity);
+
+    int removeById(Long id);
+
+    default Optional<ProcessDefinitionEntity> findById(Long id) {
+        return Optional.ofNullable(selectById(id));
+    }
+
+    default ProcessDefinitionEntity findFirstByProcessKeyOrderByVersionDesc(String processKey) {
+        List<ProcessDefinitionEntity> items = findByProcessKeyOrderByVersionDesc(processKey);
+        return items.isEmpty() ? null : items.get(0);
+    }
+
+    default ProcessDefinitionEntity save(ProcessDefinitionEntity entity) {
+        if (entity.getId() == null) {
+            insert(entity);
+        } else {
+            update(entity);
+        }
+        return entity;
+    }
+
+    default void deleteById(Long id) {
+        removeById(id);
+    }
 }

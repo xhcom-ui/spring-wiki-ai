@@ -90,6 +90,7 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-if="!realtimeTasks.length" description="暂无 watcher 配置，请先在 Watcher 配置页保存" />
     </el-card>
 
     <!-- 实时性能图表 -->
@@ -162,7 +163,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
+import { echarts } from '../utils/echarts'
 import axios from '../utils/request'
 
 // 状态数据
@@ -172,38 +173,7 @@ const syncRate = ref(0)
 const totalSynced = ref(0)
 
 // 实时任务列表
-const realtimeTasks = ref([
-  {
-    taskName: 'MySQL订单实时同步',
-    dataSourceType: 'mysql',
-    targetIndex: 'orders',
-    status: 'running',
-    queueSize: 156,
-    syncedCount: 12580,
-    dataSourceId: 1,
-    lastSyncTime: '2024-01-15 14:30:25'
-  },
-  {
-    taskName: 'PostgreSQL用户实时同步',
-    dataSourceType: 'postgresql',
-    targetIndex: 'users',
-    status: 'running',
-    queueSize: 89,
-    syncedCount: 8932,
-    dataSourceId: 2,
-    lastSyncTime: '2024-01-15 14:30:22'
-  },
-  {
-    taskName: 'MySQL商品实时同步',
-    dataSourceType: 'mysql',
-    targetIndex: 'products',
-    status: 'stopped',
-    queueSize: 0,
-    syncedCount: 5671,
-    dataSourceId: 3,
-    lastSyncTime: '2024-01-15 14:25:10'
-  }
-])
+const realtimeTasks = ref([])
 
 // 日志数据
 const logs = ref([
@@ -219,6 +189,7 @@ const rateChart = ref(null)
 const queueChart = ref(null)
 let rateChartInstance = null
 let queueChartInstance = null
+let resizeHandler = null
 
 // 详情对话框
 const detailsVisible = ref(false)
@@ -230,6 +201,9 @@ let refreshTimer = null
 // 初始化图表
 const initCharts = () => {
   // 同步速率图表
+  if (rateChartInstance) {
+    rateChartInstance.dispose()
+  }
   rateChartInstance = echarts.init(rateChart.value)
   const rateOption = {
     xAxis: {
@@ -255,6 +229,9 @@ const initCharts = () => {
   rateChartInstance.setOption(rateOption)
 
   // 队列长度图表
+  if (queueChartInstance) {
+    queueChartInstance.dispose()
+  }
   queueChartInstance = echarts.init(queueChart.value)
   const queueOption = {
     xAxis: {
@@ -283,9 +260,38 @@ const initCharts = () => {
   queueChartInstance.setOption(queueOption)
 }
 
+const toTaskRow = (item) => ({
+  id: item.id,
+  taskName: item.description || `${item.table || 'unknown'} watcher`,
+  dataSourceType: item.sourceType,
+  targetIndex: item.targetIndex,
+  status: item.status || 'stopped',
+  queueSize: item.queueSize || 0,
+  syncedCount: item.syncedCount || 0,
+  dataSourceId: item.sourceId,
+  hostName: item.hostName,
+  database: item.database,
+  table: item.table,
+  incrementalField: item.incrementalField,
+  eventTypes: item.eventTypes || [],
+  lastSyncTime: item.lastSyncTime || ''
+})
+
+const fetchWatchers = async () => {
+  try {
+    const response = await axios.get('/api/watchers')
+    const payload = response.data || response
+    realtimeTasks.value = (payload || []).map(toTaskRow)
+  } catch (error) {
+    ElMessage.error('获取 watcher 配置失败: ' + error.message)
+  }
+}
+
 // 刷新状态
 const refreshStatus = async () => {
   try {
+    await fetchWatchers()
+
     // 计算统计数据
     runningListeners.value = realtimeTasks.value.filter(t => t.status === 'running').length
     pendingQueue.value = realtimeTasks.value.reduce((sum, t) => sum + t.queueSize, 0)
@@ -295,10 +301,13 @@ const refreshStatus = async () => {
     // 获取每个任务的实时状态
     for (const task of realtimeTasks.value) {
       try {
-        const response = await axios.get(`/api/realtime/${task.dataSourceType}/status/${task.dataSourceId}`)
-        if (response.data) {
-          task.status = response.data.isRunning ? 'running' : 'stopped'
-          task.queueSize = response.data.queueSize || 0
+        const response = await axios.get(`/api/watchers/${task.id}/status`)
+        const payload = response.data || response
+        if (payload) {
+          task.status = payload.isRunning ? 'running' : 'stopped'
+          task.queueSize = payload.queueSize || 0
+          task.syncedCount = payload.syncedCount || task.syncedCount
+          task.lastSyncTime = payload.lastSyncTime || task.lastSyncTime
         }
       } catch (error) {
         console.error(`获取任务 ${task.taskName} 状态失败:`, error)
@@ -314,14 +323,15 @@ const refreshStatus = async () => {
 // 启动监听
 const startListener = async (task) => {
   try {
-    const response = await axios.post(`/api/realtime/${task.dataSourceType}/start/${task.dataSourceId}`)
-    if (response.data.success) {
+    const response = await axios.post(`/api/watchers/${task.id}/start`)
+    const payload = response.data || response
+    if (payload.success) {
       task.status = 'running'
-      ElMessage.success('监听启动成功')
-      addLog('info', `${task.taskName}: 监听已启动`)
-    } else {
-      ElMessage.error('监听启动失败: ' + response.data.message)
     }
+    task.status = payload.status || 'running'
+    task.lastSyncTime = payload.lastSyncTime || task.lastSyncTime
+    ElMessage.success('监听启动成功')
+    addLog('info', `${task.taskName}: 监听已启动`)
   } catch (error) {
     ElMessage.error('监听启动失败: ' + error.message)
   }
@@ -330,14 +340,11 @@ const startListener = async (task) => {
 // 停止监听
 const stopListener = async (task) => {
   try {
-    const response = await axios.post(`/api/realtime/${task.dataSourceType}/stop/${task.dataSourceId}`)
-    if (response.data.success) {
-      task.status = 'stopped'
-      ElMessage.success('监听停止成功')
-      addLog('info', `${task.taskName}: 监听已停止`)
-    } else {
-      ElMessage.error('监听停止失败: ' + response.data.message)
-    }
+    const response = await axios.post(`/api/watchers/${task.id}/stop`)
+    const payload = response.data || response
+    task.status = payload.status || 'stopped'
+    ElMessage.success('监听停止成功')
+    addLog('info', `${task.taskName}: 监听已停止`)
   } catch (error) {
     ElMessage.error('监听停止失败: ' + error.message)
   }
@@ -410,15 +417,19 @@ onMounted(() => {
   }, 3000)
   
   // 窗口大小改变时重新渲染图表
-  window.addEventListener('resize', () => {
+  resizeHandler = () => {
     rateChartInstance?.resize()
     queueChartInstance?.resize()
-  })
+  }
+  window.addEventListener('resize', resizeHandler)
 })
 
 onUnmounted(() => {
   if (refreshTimer) {
     clearInterval(refreshTimer)
+  }
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler)
   }
   rateChartInstance?.dispose()
   queueChartInstance?.dispose()

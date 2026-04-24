@@ -1,12 +1,18 @@
 package com.syn.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.syn.data.entity.SyncTaskConfig;
+import com.syn.data.entity.WatcherConfig;
 import com.syn.data.mapper.SyncTaskConfigMapper;
 import com.syn.data.service.ExecutionEngine;
 import com.syn.data.service.DataSyncService;
+import com.syn.data.service.WatcherConfigService;
+import com.syn.data.service.WatcherRuntimeManager;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -16,6 +22,7 @@ import java.util.*;
  */
 @RestController
 @RequestMapping("/api/task")
+@SaCheckLogin
 public class SyncTaskController {
 
     @Resource
@@ -24,12 +31,22 @@ public class SyncTaskController {
     @Resource
     private ExecutionEngine executionEngine;
 
+    @Resource
+    private WatcherConfigService watcherConfigService;
+
+    @Resource
+    private WatcherRuntimeManager watcherRuntimeManager;
+
     /**
      * 获取所有同步任务
      */
     @GetMapping
     public List<SyncTaskConfig> list() {
-        return syncTaskConfigMapper.selectList(null);
+        return syncTaskConfigMapper.selectList(
+                new QueryWrapper<SyncTaskConfig>()
+                        .orderByDesc("update_time")
+                        .orderByDesc("id")
+        );
     }
 
     /**
@@ -44,11 +61,14 @@ public class SyncTaskController {
      * 创建同步任务
      */
     @PostMapping
+    @SaCheckRole("admin")
     public SyncTaskConfig save(@RequestBody SyncTaskConfig task) {
+        normalizeWatcherBinding(task);
         task.setCreateTime(LocalDateTime.now());
         task.setUpdateTime(LocalDateTime.now());
         task.setStatus(1); // 默认启用
         syncTaskConfigMapper.insert(task);
+        registerRealtimeTask(task);
         return task;
     }
 
@@ -56,9 +76,16 @@ public class SyncTaskController {
      * 更新同步任务
      */
     @PutMapping
+    @SaCheckRole("admin")
     public SyncTaskConfig update(@RequestBody SyncTaskConfig task) {
+        SyncTaskConfig existing = syncTaskConfigMapper.selectById(task.getId());
+        if (existing != null) {
+            unregisterRealtimeTask(existing);
+        }
+        normalizeWatcherBinding(task);
         task.setUpdateTime(LocalDateTime.now());
         syncTaskConfigMapper.updateById(task);
+        registerRealtimeTask(task);
         return task;
     }
 
@@ -66,7 +93,12 @@ public class SyncTaskController {
      * 删除同步任务
      */
     @DeleteMapping("/{id}")
+    @SaCheckRole("admin")
     public void delete(@PathVariable Long id) {
+        SyncTaskConfig existing = syncTaskConfigMapper.selectById(id);
+        if (existing != null) {
+            unregisterRealtimeTask(existing);
+        }
         syncTaskConfigMapper.deleteById(id);
     }
 
@@ -74,6 +106,7 @@ public class SyncTaskController {
      * 启动同步任务
      */
     @PostMapping("/{id}/start")
+    @SaCheckRole("admin")
     public String start(@PathVariable Long id) {
         // 简化实现，实际应该调用XXL-Job或执行同步任务
         return "Task started successfully";
@@ -83,15 +116,42 @@ public class SyncTaskController {
      * 停止同步任务
      */
     @PostMapping("/{id}/stop")
+    @SaCheckRole("admin")
     public String stop(@PathVariable Long id) {
         // 简化实现，实际应该停止XXL-Job或同步任务
         return "Task stopped successfully";
+    }
+
+    private void normalizeWatcherBinding(SyncTaskConfig task) {
+        if (task.getWatcherId() == null) {
+            return;
+        }
+        WatcherConfig watcher = watcherConfigService.requireEntity(task.getWatcherId());
+        task.setSourceId(watcher.getSourceId());
+        if (task.getTargetIndex() == null || task.getTargetIndex().isBlank()) {
+            task.setTargetIndex(watcher.getTargetIndex());
+        }
+        if (task.getIncrementalField() == null || task.getIncrementalField().isBlank()) {
+            task.setIncrementalField(watcher.getIncrementalField());
+        }
+        if (task.getSyncMode() == null || task.getSyncMode().isBlank()) {
+            task.setSyncMode("incremental");
+        }
+    }
+
+    private void registerRealtimeTask(SyncTaskConfig task) {
+        watcherRuntimeManager.registerTask(task);
+    }
+
+    private void unregisterRealtimeTask(SyncTaskConfig task) {
+        watcherRuntimeManager.unregisterTask(task);
     }
 
     /**
      * 执行同步任务
      */
     @PostMapping("/{id}/execute")
+    @SaCheckRole("admin")
     public Map<String, Object> execute(@PathVariable Long id) {
         SyncTaskConfig task = syncTaskConfigMapper.selectById(id);
         if (task == null) {
@@ -127,6 +187,7 @@ public class SyncTaskController {
      * 测试执行同步任务
      */
     @PostMapping("/{id}/test-execute")
+    @SaCheckRole("admin")
     public Map<String, Object> testExecute(@PathVariable Long id) {
         SyncTaskConfig task = syncTaskConfigMapper.selectById(id);
         if (task == null) {
@@ -161,6 +222,7 @@ public class SyncTaskController {
      * 回滚执行同步任务
      */
     @PostMapping("/{id}/rollback")
+    @SaCheckRole("admin")
     public Map<String, Object> rollback(@PathVariable Long id, @RequestParam Long logId) {
         SyncTaskConfig task = syncTaskConfigMapper.selectById(id);
         if (task == null) {
@@ -192,6 +254,7 @@ public class SyncTaskController {
      * 暂停同步任务
      */
     @PostMapping("/{id}/pause")
+    @SaCheckRole("admin")
     public Map<String, Object> pause(@PathVariable Long id) {
         try {
             boolean success = executionEngine.pauseTask(id);
@@ -211,6 +274,7 @@ public class SyncTaskController {
      * 恢复同步任务
      */
     @PostMapping("/{id}/resume")
+    @SaCheckRole("admin")
     public Map<String, Object> resume(@PathVariable Long id) {
         try {
             boolean success = executionEngine.resumeTask(id);
@@ -230,6 +294,7 @@ public class SyncTaskController {
      * 测试SQL语句
      */
     @PostMapping("/{id}/test-sql")
+    @SaCheckRole("admin")
     public Map<String, Object> testSql(@PathVariable Long id) {
         Map<String, Object> result = new HashMap<>();
         
@@ -278,6 +343,7 @@ public class SyncTaskController {
      * 获取SQL执行计划
      */
     @PostMapping("/{id}/execution-plan")
+    @SaCheckRole("admin")
     public Map<String, Object> getExecutionPlan(@PathVariable Long id) {
         Map<String, Object> result = new HashMap<>();
         

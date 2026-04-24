@@ -4,7 +4,10 @@
       <template #header>
         <div class="card-header">
           <span>同步任务</span>
-          <el-button type="primary" @click="handleAdd">新增任务</el-button>
+          <div class="card-actions">
+            <el-tag v-if="!canManage" type="info" effect="plain">当前为只读视图</el-tag>
+            <el-button v-if="canManage" type="primary" @click="handleAdd">新增任务</el-button>
+          </div>
         </div>
       </template>
 
@@ -33,11 +36,14 @@
         <el-table-column prop="lastSyncTime" label="最后同步时间" />
         <el-table-column label="操作" width="350">
           <template #default="scope">
-            <el-button type="success" size="small" @click="handleStart(scope.row)">启动</el-button>
-            <el-button type="warning" size="small" @click="handleStop(scope.row)">停止</el-button>
-            <el-button type="primary" size="small" @click="executeSync(scope.row)">执行</el-button>
-            <el-button type="info" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            <template v-if="canManage">
+              <el-button type="success" size="small" @click="handleStart(scope.row)">启动</el-button>
+              <el-button type="warning" size="small" @click="handleStop(scope.row)">停止</el-button>
+              <el-button type="primary" size="small" @click="executeSync(scope.row)">执行</el-button>
+              <el-button type="info" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+              <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            </template>
+            <el-tag v-else type="info" effect="plain">仅查看</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -91,8 +97,38 @@
 
           <!-- 执行配置 -->
           <el-collapse-item title="执行配置">
+            <el-form-item label="关联 Watcher">
+              <el-select
+                v-model="form.watcherId"
+                placeholder="请选择 watcher 配置"
+                style="width: 100%"
+                clearable
+                @change="handleWatcherChange"
+              >
+                <el-option
+                  v-for="watcher in watcherList"
+                  :key="watcher.id"
+                  :label="formatWatcherLabel(watcher)"
+                  :value="watcher.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-alert
+              v-if="isWatcherDriven"
+              title="当前任务已绑定 watcher，数据源、目标索引、增量字段将优先使用 watcher 配置。"
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 18px"
+            />
             <el-form-item label="数据源">
-              <el-select v-model="form.sourceId" placeholder="请选择数据源" style="width: 100%" @change="handleDataSourceChange">
+              <el-select
+                v-model="form.sourceId"
+                placeholder="请选择数据源"
+                style="width: 100%"
+                :disabled="isWatcherDriven"
+                @change="handleDataSourceChange"
+              >
                 <el-option
                   v-for="ds in dataSourceList"
                   :key="ds.id"
@@ -107,7 +143,11 @@
               </el-select>
             </el-form-item>
             <el-form-item label="目标索引">
-              <el-input v-model="form.targetIndex" placeholder="请输入目标ES索引名称" />
+              <el-input
+                v-model="form.targetIndex"
+                placeholder="请输入目标ES索引名称"
+                :disabled="isWatcherDriven"
+              />
             </el-form-item>
             <el-form-item label="同步模式">
               <el-radio-group v-model="form.syncMode">
@@ -128,7 +168,12 @@
           <!-- 增量同步配置 -->
           <el-collapse-item title="增量同步配置" v-if="form.syncMode !== 'full'">
             <el-form-item label="增量字段">
-              <el-select v-model="form.incrementalField" placeholder="请选择增量字段" style="width: 100%">
+              <el-select
+                v-model="form.incrementalField"
+                placeholder="请选择增量字段"
+                style="width: 100%"
+                :disabled="isWatcherDriven"
+              >
                 <el-option
                   v-for="field in tableFields"
                   :key="field"
@@ -239,7 +284,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button v-if="canManage" type="primary" @click="handleSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -356,26 +401,16 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import axios from '../utils/request'
 import { ElMessage } from 'element-plus'
+import { isAdmin } from '../utils/auth'
 
 export default {
   name: 'SyncTask',
   setup() {
-    const taskList = ref([])
-    const dataSourceList = ref([])
-    const dialogVisible = ref(false)
-    const resultDialogVisible = ref(false)
-    const sqlTestDialogVisible = ref(false)
-    const variablesDialogVisible = ref(false)
-    const sqlTemplatesDialogVisible = ref(false)
-    const dialogType = ref('add')
-    const syncResult = ref(null)
-    const sqlTestResult = ref(null)
-    const tableFields = ref(['id', 'name', 'create_time', 'update_time', 'status'])
-    const newTag = ref('')
-    const form = ref({
+    const canManage = computed(() => isAdmin())
+    const createDefaultForm = () => ({
       name: '',
       description: '',
       project: 'default',
@@ -383,6 +418,7 @@ export default {
       priority: 'medium',
       tags: [],
       sourceId: null,
+      watcherId: null,
       esCluster: 'default',
       sql_: '',
       fieldMapping: '',
@@ -405,6 +441,43 @@ export default {
       errorHandlingStrategy: 'continue',
       status: 1
     })
+
+    const normalizeTags = (tags) => {
+      if (Array.isArray(tags)) {
+        return tags.filter(Boolean)
+      }
+      if (typeof tags === 'string') {
+        return tags.split(',').map(item => item.trim()).filter(Boolean)
+      }
+      return []
+    }
+
+    const buildTaskForm = (task = {}) => ({
+      ...createDefaultForm(),
+      ...task,
+      tags: normalizeTags(task.tags)
+    })
+
+    const serializeTaskPayload = () => ({
+      ...form.value,
+      tags: normalizeTags(form.value.tags).join(',')
+    })
+
+    const taskList = ref([])
+    const dataSourceList = ref([])
+    const watcherList = ref([])
+    const dialogVisible = ref(false)
+    const resultDialogVisible = ref(false)
+    const sqlTestDialogVisible = ref(false)
+    const variablesDialogVisible = ref(false)
+    const sqlTemplatesDialogVisible = ref(false)
+    const dialogType = ref('add')
+    const syncResult = ref(null)
+    const sqlTestResult = ref(null)
+    const tableFields = ref(['id', 'name', 'create_time', 'update_time', 'status'])
+    const newTag = ref('')
+    const form = ref(createDefaultForm())
+    const isWatcherDriven = computed(() => Boolean(form.value.watcherId))
 
     // 变量定义
     const systemVariables = ref([
@@ -444,11 +517,28 @@ export default {
     }
 
     const fetchDataSources = async () => {
+      if (!canManage.value) {
+        dataSourceList.value = []
+        return
+      }
       try {
         const response = await axios.get('/api/datasource')
         dataSourceList.value = response.data
       } catch (error) {
         console.error('获取数据源列表失败:', error)
+      }
+    }
+
+    const fetchWatchers = async () => {
+      if (!canManage.value) {
+        watcherList.value = []
+        return
+      }
+      try {
+        const response = await axios.get('/api/watchers')
+        watcherList.value = response.data || response
+      } catch (error) {
+        console.error('获取 watcher 列表失败:', error)
       }
     }
 
@@ -458,38 +548,29 @@ export default {
       tableFields.value = ['id', 'name', 'create_time', 'update_time', 'status', 'description']
     }
 
+    const handleWatcherChange = (watcherId) => {
+      if (!watcherId) {
+        return
+      }
+      const watcher = watcherList.value.find(item => item.id === watcherId)
+      if (!watcher) {
+        return
+      }
+      form.value.sourceId = watcher.sourceId
+      form.value.targetIndex = watcher.targetIndex || ''
+      form.value.incrementalField = watcher.incrementalField || ''
+      if (form.value.syncMode === 'full') {
+        form.value.syncMode = 'incremental'
+      }
+    }
+
+    const formatWatcherLabel = (watcher) => {
+      return `${watcher.sourceType} / ${watcher.database}.${watcher.table} / ${watcher.targetIndex || '-'}`
+    }
+
     const handleAdd = () => {
       dialogType.value = 'add'
-      form.value = {
-        name: '',
-        description: '',
-        project: 'default',
-        owner: '',
-        priority: 'medium',
-        tags: [],
-        sourceId: null,
-        esCluster: 'default',
-        sql_: '',
-        fieldMapping: '',
-        targetIndex: '',
-        syncMode: 'full',
-        executionStrategy: 'immediate',
-        incrementalField: '',
-        incrementalStrategy: 'timestamp',
-        enableCheckpoint: true,
-        scheduleType: 'manual',
-        cronExpression: '',
-        batchSize: 1000,
-        concurrentThreads: 1,
-        connectionTimeout: 30,
-        queryTimeout: 60,
-        writeTimeout: 60,
-        retryCount: 3,
-        retryInterval: 5,
-        skipErrorRecords: false,
-        errorHandlingStrategy: 'continue',
-        status: 1
-      }
+      form.value = createDefaultForm()
       dialogVisible.value = true
     }
 
@@ -583,7 +664,7 @@ export default {
 
     const handleEdit = (row) => {
       dialogType.value = 'edit'
-      form.value = { ...row }
+      form.value = buildTaskForm(row)
       dialogVisible.value = true
     }
 
@@ -622,11 +703,12 @@ export default {
 
     const handleSubmit = async () => {
       try {
+        const payload = serializeTaskPayload()
         if (dialogType.value === 'add') {
-          await axios.post('/api/task', form.value)
+          await axios.post('/api/task', payload)
           ElMessage.success('新增任务成功')
         } else {
-          await axios.put('/api/task', form.value)
+          await axios.put('/api/task', payload)
           ElMessage.success('更新任务成功')
         }
         dialogVisible.value = false
@@ -661,12 +743,17 @@ export default {
 
     onMounted(() => {
       fetchTasks()
-      fetchDataSources()
+      if (canManage.value) {
+        fetchDataSources()
+        fetchWatchers()
+      }
     })
 
     return {
+      canManage,
       taskList,
       dataSourceList,
+      watcherList,
       dialogVisible,
       resultDialogVisible,
       sqlTestDialogVisible,
@@ -682,6 +769,7 @@ export default {
       customVariables,
       contextVariables,
       sqlTemplates,
+      isWatcherDriven,
       handleAdd,
       handleEdit,
       handleDelete,
@@ -689,6 +777,8 @@ export default {
       handleStop,
       handleSubmit,
       handleDataSourceChange,
+      handleWatcherChange,
+      formatWatcherLabel,
       addTag,
       removeTag,
       formatSql,
@@ -712,6 +802,12 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .sql-editor,

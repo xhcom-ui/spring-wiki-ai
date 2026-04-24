@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowlong.repository.UserRepository">
+
+    <resultMap id="UserResultMap" type="com.example.flowlong.entity.User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="nickname" column="nickname"/>
+        <result property="email" column="email"/>
+        <result property="phone" column="phone"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="UserColumns">id, username, password, nickname, email, phone, status, created_at, updated_at</sql>
+
+    <select id="selectById" resultMap="UserResultMap">
+        select <include refid="UserColumns"/>
+        from sys_user
+        where id = #{id}
+    </select>
+
+    <select id="findByUsername" resultMap="UserResultMap">
+        select <include refid="UserColumns"/>
+        from sys_user
+        where username = #{username}
+    </select>
+
+    <select id="findAll" resultMap="UserResultMap">
+        select <include refid="UserColumns"/>
+        from sys_user
+        order by id
+    </select>
+
+    <select id="findPageByCondition" resultMap="UserResultMap">
+        select <include refid="UserColumns"/>
+        from sys_user
+        <include refid="UserQueryWhere"/>
+        order by id
+        limit #{query.safeSize}
+        offset #{query.offset}
+    </select>
+
+    <select id="countByCondition" resultType="long">
+        select count(*)
+        from sys_user
+        <include refid="UserQueryWhere"/>
+    </select>
+
+    <insert id="insert" parameterType="com.example.flowlong.entity.User" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_user (username, password, nickname, email, phone, status, created_at, updated_at)
+        values (#{username}, #{password}, #{nickname}, #{email}, #{phone}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.flowlong.entity.User">
+        update sys_user
+        set username = #{username},
+            password = #{password},
+            nickname = #{nickname},
+            email = #{email},
+            phone = #{phone},
+            status = #{status},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from sys_user where id = #{id}
+    </delete>
+
+    <sql id="UserQueryWhere">
+        <where>
+            <if test="query != null and query.status != null">
+                and status = #{query.status}
+            </if>
+            <if test="query != null and query.normalizedKeyword != null">
+                and (
+                    username ilike concat('%', #{query.normalizedKeyword}, '%')
+                    or nickname ilike concat('%', #{query.normalizedKeyword}, '%')
+                    or email ilike concat('%', #{query.normalizedKeyword}, '%')
+                    or phone ilike concat('%', #{query.normalizedKeyword}, '%')
+                )
+            </if>
+        </where>
+    </sql>
+</mapper>

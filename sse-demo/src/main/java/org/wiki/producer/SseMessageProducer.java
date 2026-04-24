@@ -1,72 +1,52 @@
 package org.wiki.producer;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-import org.wiki.config.SseRabbitConfig;
+import org.wiki.config.SseRedisConfig;
 import org.wiki.entity.SseMessage;
 import org.wiki.tools.JsonUtils;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 @Component
 @Slf4j
 public class SseMessageProducer {
-    
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
-    
-    /**
-     * 发送给单个用户
-     */
-    public void sendToUser(String userId, String message) {
-        String routingKey = SseRabbitConfig.ROUTING_KEY_PREFIX + userId;
-        rabbitTemplate.convertAndSend(
-            SseRabbitConfig.SSE_EXCHANGE, 
-            routingKey, 
-            message, 
-            m -> {
-                m.getMessageProperties().setHeader("userId", userId);
-                m.getMessageProperties().setMessageId(UUID.randomUUID().toString());
-                return m;
-            }
-        );
+
+    private final StringRedisTemplate stringRedisTemplate;
+
+    public SseMessageProducer(StringRedisTemplate stringRedisTemplate) {
+        this.stringRedisTemplate = stringRedisTemplate;
     }
-    
-    /**
-     * 发送给多个用户（广播模式）
-     */
-    public void sendToUsers(List<String> userIds, String message) {
-        for (String userId : userIds) {
-            sendToUser(userId, message);
+
+    public void sendToUser(SseMessage message) {
+        String payload = JsonUtils.toJson(message);
+        stringRedisTemplate.convertAndSend(SseRedisConfig.SSE_TOPIC, payload);
+    }
+
+    public void sendToUsers(List<SseMessage> messages) {
+        if (messages == null) {
+            return;
+        }
+        for (SseMessage message : messages) {
+            sendToUser(message);
         }
     }
-    
-    /**
-     * 发送系统公告（给所有在线用户）
-     * 注意：需要结合在线用户列表实现
-     */
+
     public void broadcastSystemNotice(String noticeContent) {
-        // 获取所有在线用户（可从Redis获取）
         Set<String> onlineUsers = getOnlineUsers();
-        
-        SseMessage message = new SseMessage();
-        message.setType(SseMessage.MessageType.SYSTEM_NOTICE);
-        message.setContent(noticeContent);
-        
         for (String userId : onlineUsers) {
+            SseMessage message = new SseMessage();
             message.setUserId(userId);
-            String jsonMessage = JsonUtils.toJson(message);
-            sendToUser(userId, jsonMessage);
+            message.setType(SseMessage.MessageType.SYSTEM_NOTICE);
+            message.setContent(noticeContent);
+            sendToUser(message);
         }
     }
-    
+
     private Set<String> getOnlineUsers() {
-        // 实际应从Redis中获取在线用户列表
         return new HashSet<>();
     }
 }

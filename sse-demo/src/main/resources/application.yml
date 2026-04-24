@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: sse-demo
+  profiles:
+    active: dev
+
+server:
+  port: 8089
+
+app:
+  sse:
+    timeout: 30000
+    heartbeat-message: ping
+  idempotent:
+    enabled: true

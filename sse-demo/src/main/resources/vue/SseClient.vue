@@ -30,7 +30,7 @@ export default {
       eventSource: null,
       isConnected: false,
       retryCount: 0,
-      maxRetries: 3
+      maxRetries: 5
     }
   },
 
@@ -56,7 +56,6 @@ export default {
       const url = `${this.sseUrl}?userId=${this.userId}`
       this.eventSource = new EventSource(url)
 
-      // 连接成功
       this.eventSource.onopen = () => {
         this.isConnected = true
         this.retryCount = 0
@@ -64,30 +63,14 @@ export default {
         this.$emit('connected')
       }
 
-      // 接收消息
-      this.eventSource.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data)
-          console.log('收到SSE消息:', message)
+      this.bindEvent('message', 'message')
+      this.bindEvent('order_update', 'order-update')
+      this.bindEvent('apm_alert', 'alert')
+      this.bindEvent('approval_notify', 'approval-notify')
+      this.bindEvent('system_notice', 'system-notice')
+      this.bindEvent('custom', 'message')
+      this.bindEvent('connected', 'connected-payload')
 
-          // 根据消息类型分发事件
-          this.handleMessage(message)
-
-        } catch (error) {
-          console.error('消息解析失败:', error)
-        }
-      }
-
-      // 自定义事件处理
-      this.eventSource.addEventListener('order_update', (event) => {
-        this.$emit('order-update', JSON.parse(event.data))
-      })
-
-      this.eventSource.addEventListener('alert', (event) => {
-        this.$emit('alert', JSON.parse(event.data))
-      })
-
-      // 错误处理
       this.eventSource.onerror = (error) => {
         console.error('SSE连接错误:', error)
         this.isConnected = false
@@ -99,9 +82,24 @@ export default {
           setTimeout(() => {
             console.log(`第${this.retryCount}次重连...`)
             this.connect()
-          }, 3000 * this.retryCount) // 递增延迟
+          }, 3000 * this.retryCount)
         }
       }
+    },
+
+    bindEvent(eventName, emitName) {
+      this.eventSource.addEventListener(eventName, (event) => {
+        try {
+          const payload = JSON.parse(event.data)
+          if (payload && payload.type) {
+            this.handleMessage(payload)
+            return
+          }
+          this.$emit(emitName, payload)
+        } catch (error) {
+          console.error(`事件 ${eventName} 解析失败:`, error)
+        }
+      })
     },
 
     /**
@@ -193,9 +191,7 @@ export default {
      * 手动发送心跳（如果需要）
      */
     sendHeartbeat() {
-      if (this.eventSource && this.isConnected) {
-        this.eventSource.send('ping')
-      }
+      console.warn('SSE客户端不能主动通过 EventSource 发送消息，请通过 HTTP API 或 WebSocket 实现心跳回传')
     }
   },
 

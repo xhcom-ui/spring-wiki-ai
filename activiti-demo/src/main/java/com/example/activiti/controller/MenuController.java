@@ -1,6 +1,7 @@
 package com.example.activiti.controller;
 
 import com.example.activiti.entity.Menu;
+import com.example.activiti.service.PermissionService;
 import com.example.activiti.service.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,14 +18,14 @@ public class MenuController {
     @Autowired
     private MenuService menuService;
 
+    @Autowired
+    private PermissionService permissionService;
+
     // 获取所有菜单
     @GetMapping("/all")
     public ResponseEntity<List<Menu>> getAllMenus() {
-        try {
-            List<Menu> menus = menuService.getAllMenus();
-            return ResponseEntity.ok(menus);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        permissionService.requireLogin();
+        List<Menu> menus = menuService.getMenusForCurrentUser();
+        return ResponseEntity.ok(menus);
     }
 }

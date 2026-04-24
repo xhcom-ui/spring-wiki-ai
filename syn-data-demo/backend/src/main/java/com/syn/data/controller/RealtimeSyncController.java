@@ -1,68 +1,66 @@
 package com.syn.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.syn.data.entity.SyncTaskConfig;
-import com.syn.data.service.MySQLBinlogListenerService;
-import com.syn.data.service.PostgresWalListenerService;
+import com.syn.data.service.WatcherRuntimeManager;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 实时同步任务管理控制器
- * 用于管理MySQL Binlog和PostgreSQL WAL的监听任务
+ * 实时同步任务管理控制器。
+ * 当前直接基于 watcher 配置模型管理运行时监听状态。
  */
 @RestController
 @RequestMapping("/api/realtime")
+@SaCheckRole("admin")
 public class RealtimeSyncController {
 
     @Resource
-    private MySQLBinlogListenerService mySQLBinlogListenerService;
-
-    @Resource
-    private PostgresWalListenerService postgresWalListenerService;
+    private WatcherRuntimeManager watcherRuntimeManager;
 
     /**
-     * 启动MySQL Binlog监听
+     * 启动 MySQL watcher
      */
-    @PostMapping("/mysql/start/{dataSourceId}")
-    public Map<String, Object> startMySQLListener(@PathVariable Long dataSourceId) {
+    @PostMapping("/mysql/start/{watcherId}")
+    public Map<String, Object> startMySQLListener(@PathVariable Long watcherId) {
         Map<String, Object> result = new HashMap<>();
         try {
-            mySQLBinlogListenerService.startListener(dataSourceId);
+            watcherRuntimeManager.start(watcherId, "mysql");
             result.put("success", true);
-            result.put("message", "MySQL Binlog监听启动成功");
+            result.put("message", "MySQL watcher 启动成功");
         } catch (Exception e) {
             result.put("success", false);
-            result.put("message", "MySQL Binlog监听启动失败: " + e.getMessage());
+            result.put("message", "MySQL watcher 启动失败: " + e.getMessage());
         }
         return result;
     }
 
     /**
-     * 停止MySQL Binlog监听
+     * 停止 MySQL watcher
      */
-    @PostMapping("/mysql/stop/{dataSourceId}")
-    public Map<String, Object> stopMySQLListener(@PathVariable Long dataSourceId) {
+    @PostMapping("/mysql/stop/{watcherId}")
+    public Map<String, Object> stopMySQLListener(@PathVariable Long watcherId) {
         Map<String, Object> result = new HashMap<>();
         try {
-            mySQLBinlogListenerService.stopListener(dataSourceId);
+            watcherRuntimeManager.stop(watcherId, "mysql");
             result.put("success", true);
-            result.put("message", "MySQL Binlog监听停止成功");
+            result.put("message", "MySQL watcher 停止成功");
         } catch (Exception e) {
             result.put("success", false);
-            result.put("message", "MySQL Binlog监听停止失败: " + e.getMessage());
+            result.put("message", "MySQL watcher 停止失败: " + e.getMessage());
         }
         return result;
     }
 
     /**
-     * 获取MySQL Binlog监听状态
+     * 获取 MySQL watcher 状态
      */
-    @GetMapping("/mysql/status/{dataSourceId}")
-    public Map<String, Object> getMySQLListenerStatus(@PathVariable Long dataSourceId) {
-        return mySQLBinlogListenerService.getListenerStatus(dataSourceId);
+    @GetMapping("/mysql/status/{watcherId}")
+    public Map<String, Object> getMySQLListenerStatus(@PathVariable Long watcherId) {
+        return watcherRuntimeManager.status(watcherId, "mysql");
     }
 
     /**
@@ -72,7 +70,8 @@ public class RealtimeSyncController {
     public Map<String, Object> registerMySQLTask(@RequestBody SyncTaskConfig task) {
         Map<String, Object> result = new HashMap<>();
         try {
-            mySQLBinlogListenerService.registerTask(task);
+            requireTaskWatcher(task, "mysql");
+            watcherRuntimeManager.registerTask(task);
             result.put("success", true);
             result.put("message", "MySQL增量同步任务注册成功");
         } catch (Exception e) {
@@ -89,7 +88,8 @@ public class RealtimeSyncController {
     public Map<String, Object> unregisterMySQLTask(@RequestBody SyncTaskConfig task) {
         Map<String, Object> result = new HashMap<>();
         try {
-            mySQLBinlogListenerService.unregisterTask(task);
+            requireTaskWatcher(task, "mysql");
+            watcherRuntimeManager.unregisterTask(task);
             result.put("success", true);
             result.put("message", "MySQL增量同步任务取消注册成功");
         } catch (Exception e) {
@@ -100,45 +100,45 @@ public class RealtimeSyncController {
     }
 
     /**
-     * 启动PostgreSQL WAL监听
+     * 启动 PostgreSQL watcher
      */
-    @PostMapping("/postgres/start/{dataSourceId}")
-    public Map<String, Object> startPostgresListener(@PathVariable Long dataSourceId) {
+    @PostMapping("/postgres/start/{watcherId}")
+    public Map<String, Object> startPostgresListener(@PathVariable Long watcherId) {
         Map<String, Object> result = new HashMap<>();
         try {
-            postgresWalListenerService.startListener(dataSourceId);
+            watcherRuntimeManager.start(watcherId, "postgresql");
             result.put("success", true);
-            result.put("message", "PostgreSQL WAL监听启动成功");
+            result.put("message", "PostgreSQL watcher 启动成功");
         } catch (Exception e) {
             result.put("success", false);
-            result.put("message", "PostgreSQL WAL监听启动失败: " + e.getMessage());
+            result.put("message", "PostgreSQL watcher 启动失败: " + e.getMessage());
         }
         return result;
     }
 
     /**
-     * 停止PostgreSQL WAL监听
+     * 停止 PostgreSQL watcher
      */
-    @PostMapping("/postgres/stop/{dataSourceId}")
-    public Map<String, Object> stopPostgresListener(@PathVariable Long dataSourceId) {
+    @PostMapping("/postgres/stop/{watcherId}")
+    public Map<String, Object> stopPostgresListener(@PathVariable Long watcherId) {
         Map<String, Object> result = new HashMap<>();
         try {
-            postgresWalListenerService.stopListener(dataSourceId);
+            watcherRuntimeManager.stop(watcherId, "postgresql");
             result.put("success", true);
-            result.put("message", "PostgreSQL WAL监听停止成功");
+            result.put("message", "PostgreSQL watcher 停止成功");
         } catch (Exception e) {
             result.put("success", false);
-            result.put("message", "PostgreSQL WAL监听停止失败: " + e.getMessage());
+            result.put("message", "PostgreSQL watcher 停止失败: " + e.getMessage());
         }
         return result;
     }
 
     /**
-     * 获取PostgreSQL WAL监听状态
+     * 获取 PostgreSQL watcher 状态
      */
-    @GetMapping("/postgres/status/{dataSourceId}")
-    public Map<String, Object> getPostgresListenerStatus(@PathVariable Long dataSourceId) {
-        return postgresWalListenerService.getListenerStatus(dataSourceId);
+    @GetMapping("/postgres/status/{watcherId}")
+    public Map<String, Object> getPostgresListenerStatus(@PathVariable Long watcherId) {
+        return watcherRuntimeManager.status(watcherId, "postgresql");
     }
 
     /**
@@ -148,7 +148,8 @@ public class RealtimeSyncController {
     public Map<String, Object> registerPostgresTask(@RequestBody SyncTaskConfig task) {
         Map<String, Object> result = new HashMap<>();
         try {
-            postgresWalListenerService.registerTask(task);
+            requireTaskWatcher(task, "postgresql");
+            watcherRuntimeManager.registerTask(task);
             result.put("success", true);
             result.put("message", "PostgreSQL增量同步任务注册成功");
         } catch (Exception e) {
@@ -165,7 +166,8 @@ public class RealtimeSyncController {
     public Map<String, Object> unregisterPostgresTask(@RequestBody SyncTaskConfig task) {
         Map<String, Object> result = new HashMap<>();
         try {
-            postgresWalListenerService.unregisterTask(task);
+            requireTaskWatcher(task, "postgresql");
+            watcherRuntimeManager.unregisterTask(task);
             result.put("success", true);
             result.put("message", "PostgreSQL增量同步任务取消注册成功");
         } catch (Exception e) {
@@ -173,6 +175,13 @@ public class RealtimeSyncController {
             result.put("message", "PostgreSQL增量同步任务取消注册失败: " + e.getMessage());
         }
         return result;
+    }
+
+    private void requireTaskWatcher(SyncTaskConfig task, String sourceType) {
+        if (task.getWatcherId() == null) {
+            throw new RuntimeException("task.watcherId 不能为空");
+        }
+        watcherRuntimeManager.requireWatcher(task.getWatcherId(), sourceType);
     }
 
 }

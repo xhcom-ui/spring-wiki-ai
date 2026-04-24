@@ -1,8 +1,10 @@
 package com.example.activiti.controller;
 
+import com.example.activiti.controller.dto.TaskInboxItem;
 import com.example.activiti.entity.Leave;
 import com.example.activiti.service.ActivitiService;
-import org.activiti.engine.task.Task;
+import com.example.activiti.service.PermissionService;
+import com.example.activiti.service.ProcessMonitoringService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,92 +19,92 @@ public class ActivitiController {
     @Autowired
     private ActivitiService activitiService;
 
-    // 部署流程
+    @Autowired
+    private PermissionService permissionService;
+
+    @Autowired
+    private ProcessMonitoringService processMonitoringService;
+
     @PostMapping("/deploy")
     public ResponseEntity<Map<String, String>> deployProcess() {
-        try {
-            activitiService.deployProcess();
-            return ResponseEntity.ok(Map.of("message", "流程部署成功"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "流程部署失败: " + e.getMessage()));
-        }
+        permissionService.requirePermission("process:design");
+        activitiService.deployProcess();
+        return ResponseEntity.ok(Map.of("message", "流程部署成功"));
     }
 
-    // 启动请假流程
     @PostMapping("/leave/start")
     public ResponseEntity<Leave> startLeaveProcess(@RequestBody Leave leave) {
-        try {
-            Leave savedLeave = activitiService.startLeaveProcess(leave);
-            return ResponseEntity.ok(savedLeave);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        permissionService.requirePermission("leave:submit");
+        return ResponseEntity.ok(activitiService.startLeaveProcess(leave));
     }
 
-    // 查询用户的待办任务
     @GetMapping("/tasks/{assignee}")
-    public ResponseEntity<List<Task>> getTasksByAssignee(@PathVariable String assignee) {
-        try {
-            List<Task> tasks = activitiService.getTasksByAssignee(assignee);
-            return ResponseEntity.ok(tasks);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+    public ResponseEntity<List<Map<String, Object>>> getTasksByAssignee(@PathVariable String assignee) {
+        permissionService.requirePermission("task:approve");
+        return ResponseEntity.ok(processMonitoringService.getTasksByAssignee(assignee));
     }
 
-    // 完成任务
+    @GetMapping("/tasks/inbox")
+    public ResponseEntity<List<TaskInboxItem>> getCurrentUserInbox() {
+        permissionService.requirePermission("task:approve");
+        return ResponseEntity.ok(activitiService.getCurrentUserInbox());
+    }
+
+    @GetMapping("/task/{taskId}")
+    public ResponseEntity<?> getCurrentUserTask(@PathVariable String taskId) {
+        permissionService.requirePermission("task:approve");
+        return ResponseEntity.ok(activitiService.getCurrentUserTask(taskId));
+    }
+
+    @PostMapping("/task/claim")
+    public ResponseEntity<Map<String, String>> claimTask(@RequestBody Map<String, Object> request) {
+        permissionService.requirePermission("task:approve");
+        activitiService.claimTask((String) request.get("taskId"));
+        return ResponseEntity.ok(Map.of("message", "任务签收成功"));
+    }
+
     @PostMapping("/task/complete")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, String>> completeTask(@RequestBody Map<String, Object> request) {
-        try {
-            String taskId = (String) request.get("taskId");
-            Map<String, Object> variables = (Map<String, Object>) request.get("variables");
-            String processInstanceId = (String) request.get("processInstanceId");
-            String status = (String) request.get("status");
+        permissionService.requirePermission("task:approve");
+        String taskId = (String) request.get("taskId");
+        Map<String, Object> variables = (Map<String, Object>) request.get("variables");
+        String processInstanceId = (String) request.get("processInstanceId");
+        String status = (String) request.get("status");
 
-            activitiService.completeTask(taskId, variables);
-            if (processInstanceId != null && status != null) {
-                activitiService.updateLeaveStatus(processInstanceId, status);
-            }
-
-            return ResponseEntity.ok(Map.of("message", "任务完成成功"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "任务完成失败: " + e.getMessage()));
+        activitiService.completeTask(taskId, variables);
+        if (processInstanceId != null && status != null) {
+            activitiService.updateLeaveStatus(processInstanceId, status);
         }
+
+        return ResponseEntity.ok(Map.of("message", "任务完成成功"));
     }
 
-    // 查询所有请假申请
     @GetMapping("/leaves")
     public ResponseEntity<List<Leave>> getAllLeaves() {
-        try {
-            List<Leave> leaves = activitiService.getAllLeaves();
-            return ResponseEntity.ok(leaves);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        permissionService.requirePermission("monitoring:view");
+        return ResponseEntity.ok(activitiService.getAllLeaves());
     }
 
-    // 根据ID查询请假申请
+    @GetMapping("/leaves/applicant/{applicant}")
+    public ResponseEntity<List<Leave>> getLeavesByApplicant(@PathVariable String applicant) {
+        permissionService.requirePermission("leave:submit");
+        return ResponseEntity.ok(activitiService.getLeavesByApplicant(applicant));
+    }
+
     @GetMapping("/leave/{id}")
     public ResponseEntity<Leave> getLeaveById(@PathVariable Long id) {
-        try {
-            Leave leave = activitiService.getLeaveById(id);
-            if (leave == null) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.ok(leave);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
+        permissionService.requirePermission("leave:submit");
+        Leave leave = activitiService.getLeaveById(id);
+        if (leave == null) {
+            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(leave);
     }
 
-    // 查询流程实例状态
     @GetMapping("/process/status/{processInstanceId}")
     public ResponseEntity<Map<String, String>> getProcessInstanceStatus(@PathVariable String processInstanceId) {
-        try {
-            String status = activitiService.getProcessInstanceStatus(processInstanceId);
-            return ResponseEntity.ok(Map.of("status", status));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "查询流程状态失败: " + e.getMessage()));
-        }
+        permissionService.requirePermission("monitoring:view");
+        return ResponseEntity.ok(Map.of("status", activitiService.getProcessInstanceStatus(processInstanceId)));
     }
 }

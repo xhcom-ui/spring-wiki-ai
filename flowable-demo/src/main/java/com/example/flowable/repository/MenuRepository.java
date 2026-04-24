@@ -1,12 +1,49 @@
 package com.example.flowable.repository;
 
 import com.example.flowable.entity.Menu;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface MenuRepository extends JpaRepository<Menu, Long> {
+public interface MenuRepository {
+    Menu selectById(Long id);
+
     List<Menu> findByStatus(Integer status);
+
+    List<Menu> findAll();
+
+    List<Menu> findAllById(@Param("ids") List<Long> ids);
+
+    int insert(Menu menu);
+
+    int update(Menu menu);
+
+    int removeById(Long id);
+
+    default Optional<Menu> findById(Long id) {
+        return Optional.ofNullable(selectById(id));
+    }
+
+    default Menu save(Menu menu) {
+        if (menu.getId() == null) {
+            insert(menu);
+        } else {
+            update(menu);
+        }
+        return menu;
+    }
+
+    default List<Menu> saveAll(List<Menu> menus) {
+        for (Menu menu : menus) {
+            save(menu);
+        }
+        return menus;
+    }
+
+    default void delete(Menu menu) {
+        if (menu != null && menu.getId() != null) {
+            removeById(menu.getId());
+        }
+    }
 }

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowable.repository.LeaveRepository">
+
+    <resultMap id="LeaveResultMap" type="Leave">
+        <id property="id" column="id"/>
+        <result property="processInstanceId" column="process_instance_id"/>
+        <result property="businessKey" column="business_key"/>
+        <result property="applicant" column="applicant"/>
+        <result property="deptManager" column="dept_manager"/>
+        <result property="generalManager" column="general_manager"/>
+        <result property="status" column="status"/>
+        <result property="startDate" column="start_date"/>
+        <result property="endDate" column="end_date"/>
+        <result property="days" column="days"/>
+        <result property="reason" column="reason"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="LeaveColumns">id, process_instance_id, business_key, applicant, dept_manager, general_manager, status, start_date, end_date, days, reason, created_at, updated_at</sql>
+
+    <select id="selectById" resultMap="LeaveResultMap">
+        select <include refid="LeaveColumns"/>
+        from leave_application
+        where id = #{id}
+    </select>
+
+    <select id="findByProcessInstanceId" resultMap="LeaveResultMap">
+        select <include refid="LeaveColumns"/>
+        from leave_application
+        where process_instance_id = #{processInstanceId}
+    </select>
+
+    <select id="findByBusinessKey" resultMap="LeaveResultMap">
+        select <include refid="LeaveColumns"/>
+        from leave_application
+        where business_key = #{businessKey}
+    </select>
+
+    <select id="findByApplicantOrderByCreatedAtDesc" resultMap="LeaveResultMap">
+        select <include refid="LeaveColumns"/>
+        from leave_application
+        where applicant = #{applicant}
+        order by created_at desc, id desc
+    </select>
+
+    <select id="findAll" resultMap="LeaveResultMap">
+        select <include refid="LeaveColumns"/>
+        from leave_application
+        order by created_at desc, id desc
+    </select>
+
+    <insert id="insert" parameterType="Leave" useGeneratedKeys="true" keyProperty="id">
+        insert into leave_application (
+            process_instance_id, business_key, applicant, dept_manager, general_manager, status,
+            start_date, end_date, days, reason, created_at, updated_at
+        ) values (
+            #{processInstanceId}, #{businessKey}, #{applicant}, #{deptManager}, #{generalManager}, #{status},
+            #{startDate}, #{endDate}, #{days}, #{reason}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="Leave">
+        update leave_application
+        set process_instance_id = #{processInstanceId},
+            business_key = #{businessKey},
+            applicant = #{applicant},
+            dept_manager = #{deptManager},
+            general_manager = #{generalManager},
+            status = #{status},
+            start_date = #{startDate},
+            end_date = #{endDate},
+            days = #{days},
+            reason = #{reason},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from leave_application where id = #{id}
+    </delete>
+</mapper>

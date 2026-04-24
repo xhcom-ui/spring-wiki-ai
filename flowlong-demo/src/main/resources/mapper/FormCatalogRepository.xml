@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.flowlong.repository.FormCatalogRepository">
+
+    <resultMap id="FormCatalogResultMap" type="com.example.flowlong.entity.FormCatalog">
+        <id property="id" column="id"/>
+        <result property="formKey" column="form_key"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="schemaJson" column="schema_json"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="FormCatalogColumns">id, form_key, title, description, schema_json, status, created_at, updated_at</sql>
+
+    <select id="selectById" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from sys_form_catalog
+        where id = #{id}
+    </select>
+
+    <select id="findByFormKey" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from sys_form_catalog
+        where form_key = #{formKey}
+        limit 1
+    </select>
+
+    <select id="findAll" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from sys_form_catalog
+        order by updated_at desc nulls last, id desc
+    </select>
+
+    <select id="findByStatus" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from sys_form_catalog
+        where status = #{status}
+        order by updated_at desc nulls last, id desc
+    </select>
+
+    <select id="findPageByCondition" resultMap="FormCatalogResultMap">
+        select <include refid="FormCatalogColumns"/>
+        from sys_form_catalog
+        <include refid="FormCatalogQueryWhere"/>
+        order by updated_at desc nulls last, id desc
+        limit #{query.safeSize}
+        offset #{query.offset}
+    </select>
+
+    <select id="countByCondition" resultType="long">
+        select count(*)
+        from sys_form_catalog
+        <include refid="FormCatalogQueryWhere"/>
+    </select>
+
+    <insert id="insert" parameterType="com.example.flowlong.entity.FormCatalog" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_form_catalog (form_key, title, description, schema_json, status, created_at, updated_at)
+        values (#{formKey}, #{title}, #{description}, #{schemaJson}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.example.flowlong.entity.FormCatalog">
+        update sys_form_catalog
+        set form_key = #{formKey},
+            title = #{title},
+            description = #{description},
+            schema_json = #{schemaJson},
+            status = #{status},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        where id = #{id}
+    </update>
+
+    <delete id="removeById">
+        delete from sys_form_catalog where id = #{id}
+    </delete>
+
+    <sql id="FormCatalogQueryWhere">
+        <where>
+            <if test="query != null and query.status != null">
+                and status = #{query.status}
+            </if>
+            <if test="query != null and query.normalizedKeyword != null">
+                and (
+                    form_key ilike concat('%', #{query.normalizedKeyword}, '%')
+                    or title ilike concat('%', #{query.normalizedKeyword}, '%')
+                    or description ilike concat('%', #{query.normalizedKeyword}, '%')
+                )
+            </if>
+        </where>
+    </sql>
+</mapper>

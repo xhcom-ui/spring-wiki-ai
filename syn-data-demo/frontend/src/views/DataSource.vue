@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>数据源管理</span>
-          <el-button type="primary" @click="handleAdd">新增数据源</el-button>
+          <el-button v-if="canManage" type="primary" @click="handleAdd">新增数据源</el-button>
         </div>
       </template>
 
@@ -17,7 +17,7 @@
         </el-table-column>
         <el-table-column prop="host" label="主机地址" />
         <el-table-column prop="port" label="端口" />
-        <el-table-column prop="database" label="数据库" />
+        <el-table-column prop="databaseName" label="数据库" />
         <el-table-column prop="status" label="状态">
           <template #default="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
@@ -28,8 +28,8 @@
         <el-table-column label="操作" width="250">
           <template #default="scope">
             <el-button type="primary" size="small" @click="handleTest(scope.row)">测试连接</el-button>
-            <el-button type="success" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button v-if="canManage" type="success" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button v-if="canManage" type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -62,7 +62,7 @@
           <el-input-number v-model="form.port" :min="1" :max="65535" style="width: 100%" />
         </el-form-item>
         <el-form-item label="数据库">
-          <el-input v-model="form.database" placeholder="请输入数据库名称" />
+          <el-input v-model="form.databaseName" placeholder="请输入数据库名称" />
         </el-form-item>
         <el-form-item label="用户名">
           <el-input v-model="form.username" placeholder="请输入用户名" />
@@ -150,13 +150,15 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import axios from '../utils/request'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { isAdmin } from '../utils/auth'
 
 export default {
   name: 'DataSource',
   setup() {
+    const canManage = computed(() => isAdmin())
     const dataSourceList = ref([])
     const dataSourceTypes = ref([])
     const dialogVisible = ref(false)
@@ -171,7 +173,7 @@ export default {
       type: 'mysql',
       host: '',
       port: 3306,
-      database: '',
+      databaseName: '',
       username: '',
       password: '',
       description: '',
@@ -183,7 +185,7 @@ export default {
     const fetchData = async () => {
       try {
         const response = await axios.get('/api/datasource')
-        dataSourceList.value = response.data
+        dataSourceList.value = response.data || response
       } catch (error) {
         console.error('获取数据源列表失败:', error)
         ElMessage.error('获取数据源列表失败')
@@ -193,7 +195,7 @@ export default {
     const fetchDataSourceTypes = async () => {
       try {
         const response = await axios.get('/api/datasource/types')
-        dataSourceTypes.value = response.data
+        dataSourceTypes.value = response.data || response
       } catch (error) {
         console.error('获取数据源类型失败:', error)
       }
@@ -206,7 +208,7 @@ export default {
         type: 'mysql',
         host: '',
         port: 3306,
-        database: '',
+        databaseName: '',
         username: '',
         password: '',
         description: '',
@@ -219,12 +221,18 @@ export default {
 
     const handleEdit = (row) => {
       dialogType.value = 'edit'
-      form.value = { ...row }
+      form.value = {
+        ...row,
+        databaseName: row.databaseName ?? row.database ?? ''
+      }
       dialogVisible.value = true
     }
 
     const handleDelete = async (row) => {
       try {
+        await ElMessageBox.confirm(`确认删除数据源“${row.name}”吗？`, '删除确认', {
+          type: 'warning'
+        })
         await axios.delete(`/api/datasource/${row.id}`)
         ElMessage.success('删除成功')
         fetchData()
@@ -256,7 +264,7 @@ export default {
         currentDataSource.value = row
         ElMessage.info('正在测试连接...')
         const response = await axios.post(`/api/datasource/${row.id}/test`)
-        testResult.value = response.data
+        testResult.value = response.data || response
         testDialogVisible.value = true
       } catch (error) {
         console.error('测试连接失败:', error)
@@ -269,7 +277,7 @@ export default {
         if (!currentDataSource.value) return
         ElMessage.info('正在进行性能测试...')
         const response = await axios.post(`/api/datasource/${currentDataSource.value.id}/performance`)
-        performanceResult.value = response.data
+        performanceResult.value = response.data || response
         performanceDialogVisible.value = true
       } catch (error) {
         console.error('性能测试失败:', error)
@@ -291,6 +299,7 @@ export default {
     })
 
     return {
+      canManage,
       dataSourceList,
       dataSourceTypes,
       dialogVisible,

@@ -1,42 +1,22 @@
 # 开发环境配置
 spring:
-  # 开发环境配置覆盖
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
-  # 开发环境详细日志
   jackson:
     serialization:
       indent-output: true
-
-  # 开发环境自动重载
-  devtools:
-    restart:
-      enabled: true
-    livereload:
-      enabled: true
   data:
     redis:
       host: localhost
       port: 6379
 
-# 开发环境特殊配置
 app:
   sse:
-    timeout: 30000  # 开发环境设置为30秒超时
-  cors:
-    allowed-origins: "*"  # 开发环境允许所有来源
-  # 开发环境不启用幂等性检查
-  enable-idempotent: false
+    timeout: 30000
+    heartbeat-message: ping
+  idempotent:
+    enabled: false
 
-# 开发环境日志级别
 logging:
   level:
-    com.example.sse: DEBUG
+    org.wiki: DEBUG
     org.springframework.web: DEBUG
-    org.springframework.amqp.rabbit: DEBUG
-  file:
-    enabled: false
+    org.springframework.data.redis: DEBUG

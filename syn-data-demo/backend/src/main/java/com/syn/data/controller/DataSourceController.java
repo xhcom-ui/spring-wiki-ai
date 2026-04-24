@@ -1,17 +1,16 @@
 package com.syn.data.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.syn.data.entity.DataSourceConfig;
 import com.syn.data.mapper.DataSourceConfigMapper;
+import com.syn.data.service.DatabaseConnectionService;
+import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,17 +19,25 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/datasource")
+@SaCheckRole("admin")
 public class DataSourceController {
 
     @Resource
     private DataSourceConfigMapper dataSourceConfigMapper;
+
+    @Resource
+    private DatabaseConnectionService databaseConnectionService;
 
     /**
      * 获取所有数据源
      */
     @GetMapping
     public List<DataSourceConfig> list() {
-        return dataSourceConfigMapper.selectList(null);
+        return dataSourceConfigMapper.selectList(
+                new QueryWrapper<DataSourceConfig>()
+                        .orderByDesc("update_time")
+                        .orderByDesc("id")
+        );
     }
 
     /**
@@ -46,6 +53,7 @@ public class DataSourceController {
      */
     @PostMapping
     public DataSourceConfig save(@RequestBody DataSourceConfig config) {
+        applyDefaults(config);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
         config.setStatus(1); // 默认启用
@@ -58,6 +66,14 @@ public class DataSourceController {
      */
     @PutMapping
     public DataSourceConfig update(@RequestBody DataSourceConfig config) {
+        DataSourceConfig existing = dataSourceConfigMapper.selectById(config.getId());
+        if (existing == null) {
+            throw new RuntimeException("数据源不存在");
+        }
+        applyDefaults(config);
+        if (config.getPassword() == null || config.getPassword().isBlank()) {
+            config.setPassword(existing.getPassword());
+        }
         config.setUpdateTime(LocalDateTime.now());
         dataSourceConfigMapper.updateById(config);
         return config;
@@ -81,75 +97,30 @@ public class DataSourceController {
             throw new RuntimeException("数据源不存在");
         }
 
-        Map<String, Object> result = new HashMap<>();
-        Connection conn = null;
-        Statement stmt = null;
-        ResultSet rs = null;
-
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
         try {
-            // 加载驱动
-            if ("mysql".equals(config.getType())) {
-                Class.forName("com.mysql.cj.jdbc.Driver");
-            } else if ("postgresql".equals(config.getType())) {
-                Class.forName("org.postgresql.Driver");
-            } else {
-                throw new RuntimeException("不支持的数据源类型: " + config.getType());
-            }
-
-            // 构建连接URL
-            String url;
-            if ("mysql".equals(config.getType())) {
-                url = String.format("jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai",
-                        config.getHost(), config.getPort(), config.getDatabaseName());
-            } else {
-                url = String.format("jdbc:postgresql://%s:%d/%s",
-                        config.getHost(), config.getPort(), config.getDatabaseName());
-            }
-
             // 测试连接
             long startTime = System.currentTimeMillis();
-            conn = DriverManager.getConnection(url, config.getUsername(), config.getPassword());
-            long endTime = System.currentTimeMillis();
+            try (Connection conn = databaseConnectionService.openConnection(config);
+                 Statement stmt = conn.createStatement()) {
+                long endTime = System.currentTimeMillis();
 
-            // 获取数据库版本信息
-            stmt = conn.createStatement();
-            rs = stmt.executeQuery("SELECT version()");
-            String version = "";
-            if (rs.next()) {
-                version = rs.getString(1);
+                // 获取数据库版本信息
+                String version = querySingleValue(stmt, "SELECT version()", 1);
+
+                // 获取字符集信息
+                String charset = databaseConnectionService.resolveCharset(config, stmt);
+
+                result.put("success", true);
+                result.put("message", "连接测试成功");
+                result.put("version", version);
+                result.put("charset", charset);
+                result.put("connectTime", endTime - startTime);
             }
-
-            // 获取字符集信息
-            String charset = "";
-            if ("mysql".equals(config.getType())) {
-                rs = stmt.executeQuery("SHOW VARIABLES LIKE 'character_set_database'");
-                if (rs.next()) {
-                    charset = rs.getString(2);
-                }
-            } else if ("postgresql".equals(config.getType())) {
-                rs = stmt.executeQuery("SHOW client_encoding");
-                if (rs.next()) {
-                    charset = rs.getString(1);
-                }
-            }
-
-            result.put("success", true);
-            result.put("message", "连接测试成功");
-            result.put("version", version);
-            result.put("charset", charset);
-            result.put("connectTime", endTime - startTime);
 
         } catch (Exception e) {
             result.put("success", false);
             result.put("message", "连接测试失败: " + e.getMessage());
-        } finally {
-            try {
-                if (rs != null) rs.close();
-                if (stmt != null) stmt.close();
-                if (conn != null) conn.close();
-            } catch (Exception e) {
-                // 忽略关闭异常
-            }
         }
 
         return result;
@@ -165,37 +136,18 @@ public class DataSourceController {
             throw new RuntimeException("数据源不存在");
         }
 
-        Map<String, Object> result = new HashMap<>();
-        Connection conn = null;
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
 
         try {
-            // 加载驱动
-            if ("mysql".equals(config.getType())) {
-                Class.forName("com.mysql.cj.jdbc.Driver");
-            } else if ("postgresql".equals(config.getType())) {
-                Class.forName("org.postgresql.Driver");
-            }
-
-            // 构建连接URL
-            String url;
-            if ("mysql".equals(config.getType())) {
-                url = String.format("jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai",
-                        config.getHost(), config.getPort(), config.getDatabaseName());
-            } else {
-                url = String.format("jdbc:postgresql://%s:%d/%s",
-                        config.getHost(), config.getPort(), config.getDatabaseName());
-            }
-
             // 测试多次连接耗时
             int testCount = 5;
             long totalTime = 0;
 
             for (int i = 0; i < testCount; i++) {
                 long startTime = System.currentTimeMillis();
-                conn = DriverManager.getConnection(url, config.getUsername(), config.getPassword());
-                long endTime = System.currentTimeMillis();
-                totalTime += (endTime - startTime);
-                conn.close();
+                try (Connection ignored = databaseConnectionService.openConnection(config)) {
+                    totalTime += (System.currentTimeMillis() - startTime);
+                }
             }
 
             result.put("success", true);
@@ -207,12 +159,6 @@ public class DataSourceController {
         } catch (Exception e) {
             result.put("success", false);
             result.put("message", "性能测试失败: " + e.getMessage());
-        } finally {
-            try {
-                if (conn != null) conn.close();
-            } catch (Exception e) {
-                // 忽略关闭异常
-            }
         }
 
         return result;
@@ -223,21 +169,36 @@ public class DataSourceController {
      */
     @GetMapping("/types")
     public List<Map<String, Object>> getTypes() {
-        List<Map<String, Object>> types = new java.util.ArrayList<>();
-        
-        Map<String, Object> mysql = new HashMap<>();
-        mysql.put("value", "mysql");
-        mysql.put("label", "MySQL");
-        mysql.put("defaultPort", 3306);
-        types.add(mysql);
+        return List.of(
+                Map.of("value", "mysql", "label", "MySQL", "defaultPort", 3306),
+                Map.of("value", "postgresql", "label", "PostgreSQL", "defaultPort", 5432)
+        );
+    }
 
-        Map<String, Object> postgresql = new HashMap<>();
-        postgresql.put("value", "postgresql");
-        postgresql.put("label", "PostgreSQL");
-        postgresql.put("defaultPort", 5432);
-        types.add(postgresql);
+    private void applyDefaults(DataSourceConfig config) {
+        if (config.getPassword() == null || config.getPassword().isBlank()) {
+            if (config.getId() == null) {
+                throw new IllegalArgumentException("数据源密码不能为空");
+            }
+        }
+        if (config.getPort() == null) {
+            config.setPort("postgresql".equalsIgnoreCase(config.getType()) ? 5432 : 3306);
+        }
+        if (config.getMaxConnections() == null || config.getMaxConnections() <= 0) {
+            config.setMaxConnections(10);
+        }
+        if (config.getMinConnections() == null || config.getMinConnections() < 0) {
+            config.setMinConnections(5);
+        }
+        if (config.getConnectionTimeout() == null || config.getConnectionTimeout() <= 0) {
+            config.setConnectionTimeout(30000);
+        }
+    }
 
-        return types;
+    private String querySingleValue(Statement stmt, String sql, int columnIndex) throws Exception {
+        try (java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+            return rs.next() ? rs.getString(columnIndex) : "";
+        }
     }
 
 }

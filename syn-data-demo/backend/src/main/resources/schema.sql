@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS data_source_config (
     database_name VARCHAR(255) NOT NULL COMMENT '数据库名称',
     username VARCHAR(255) NOT NULL COMMENT '用户名',
     password VARCHAR(255) NOT NULL COMMENT '密码（加密存储）',
+    connection_params VARCHAR(1000) COMMENT '连接附加参数',
     max_connections INT DEFAULT 10 COMMENT '最大连接数',
     min_connections INT DEFAULT 5 COMMENT '最小连接数',
     connection_timeout INT DEFAULT 30 COMMENT '连接超时时间（秒）',
@@ -27,7 +28,28 @@ CREATE TABLE IF NOT EXISTS data_source_config (
     UNIQUE KEY uk_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据源配置表';
 
--- 2. 同步任务配置表
+-- 2.1 watcher 配置表
+CREATE TABLE IF NOT EXISTS watcher_config (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'watcher ID',
+    source_type VARCHAR(50) NOT NULL COMMENT '数据源类型: mysql, postgresql',
+    source_id BIGINT NOT NULL COMMENT '数据源ID',
+    host_name VARCHAR(255) COMMENT '主机名',
+    database_name VARCHAR(255) NOT NULL COMMENT '数据库名',
+    table_name VARCHAR(255) NOT NULL COMMENT '表名',
+    target_index VARCHAR(255) COMMENT '目标索引',
+    incremental_field VARCHAR(255) COMMENT '增量字段',
+    event_types VARCHAR(255) COMMENT '监听事件类型，逗号分隔',
+    description VARCHAR(500) COMMENT '描述',
+    status VARCHAR(50) DEFAULT 'stopped' COMMENT '运行状态: running, stopped',
+    queue_size BIGINT DEFAULT 0 COMMENT '当前队列大小',
+    synced_count BIGINT DEFAULT 0 COMMENT '累计同步数量',
+    last_sync_time DATETIME COMMENT '最后同步时间',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (source_id) REFERENCES data_source_config(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='watcher 配置表';
+
+-- 2.2 同步任务配置表
 CREATE TABLE IF NOT EXISTS sync_task_config (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '任务ID',
     name VARCHAR(255) NOT NULL COMMENT '任务名称',
@@ -37,6 +59,7 @@ CREATE TABLE IF NOT EXISTS sync_task_config (
     priority VARCHAR(20) DEFAULT 'medium' COMMENT '优先级: low, medium, high',
     tags VARCHAR(500) COMMENT '标签（逗号分隔）',
     source_id BIGINT NOT NULL COMMENT '数据源ID',
+    watcher_id BIGINT COMMENT '关联 watcher 配置ID',
     es_cluster VARCHAR(255) DEFAULT 'default' COMMENT 'ES集群',
     target_index VARCHAR(255) NOT NULL COMMENT '目标ES索引',
     `sql` TEXT NOT NULL COMMENT 'SQL语句',
@@ -59,9 +82,11 @@ CREATE TABLE IF NOT EXISTS sync_task_config (
     error_handling_strategy VARCHAR(50) DEFAULT 'continue' COMMENT '错误处理策略: continue, pause, terminate',
     status TINYINT DEFAULT 1 COMMENT '状态: 1-启用, 0-禁用',
     last_sync_time DATETIME COMMENT '上次同步时间',
+    last_sync_status VARCHAR(50) COMMENT '上次同步状态',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     FOREIGN KEY (source_id) REFERENCES data_source_config(id) ON DELETE CASCADE,
+    FOREIGN KEY (watcher_id) REFERENCES watcher_config(id) ON DELETE SET NULL,
     UNIQUE KEY uk_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='同步任务配置表';
 
@@ -164,6 +189,12 @@ CREATE TABLE IF NOT EXISTS user (
     UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
+ALTER TABLE data_source_config
+    ADD COLUMN IF NOT EXISTS connection_params VARCHAR(1000) COMMENT '连接附加参数' AFTER password;
+
+ALTER TABLE sync_task_config
+    ADD COLUMN IF NOT EXISTS last_sync_status VARCHAR(50) COMMENT '上次同步状态' AFTER last_sync_time;
+
 -- 初始化系统配置
 INSERT INTO system_config (key_name, value, description) VALUES
 ('system.name', '数据同步平台', '系统名称'),
@@ -204,6 +235,6 @@ ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 
 -- 3. 测试用户
 INSERT INTO user (username, password, name, email, role, status) VALUES
-('admin', 'admin123', '管理员', 'admin@example.com', 'admin', 1),
-('user', 'user123', '普通用户', 'user@example.com', 'user', 1)
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', '管理员', 'admin@example.com', 'admin', 1),
+('user', 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', '普通用户', 'user@example.com', 'user', 1)
+ON DUPLICATE KEY UPDATE password = VALUES(password), updated_at = CURRENT_TIMESTAMP;

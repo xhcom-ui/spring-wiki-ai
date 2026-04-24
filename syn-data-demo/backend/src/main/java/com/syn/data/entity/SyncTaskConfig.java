@@ -60,6 +60,11 @@ public class SyncTaskConfig implements Serializable {
     private Long sourceId;
 
     /**
+     * 关联 watcher 配置ID
+     */
+    private Long watcherId;
+
+    /**
      * ES集群
      */
     private String esCluster;
